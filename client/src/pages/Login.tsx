@@ -1,19 +1,73 @@
-import React from 'react';
-import { Container, Box, Typography, TextField, Button } from '@mui/material';
+
+import React, { useState } from 'react';
+import { Container, Box, Typography, TextField, Button, Snackbar, Alert } from '@mui/material';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../firebase';
+import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [openError, setOpenError] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [openSuccess, setOpenSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+      setOpenError(true);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message);
+      setOpenError(true);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email to reset password.');
+      setOpenError(true);
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess('Password reset email sent!');
+      setOpenSuccess(true);
+    } catch (err: any) {
+      setError(err.message);
+      setOpenError(true);
+    }
+  };
+
   return (
-  <Container maxWidth={false} disableGutters sx={{ mt: 0, px: 0, width: '100%', minHeight: '100vh' }}>
-      <Box sx={{ mt: 8, p: 4, boxShadow: 3, borderRadius: 2 }}>
+    <Container maxWidth={false} disableGutters sx={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0 }}>
+      <Box sx={{ p: 4, boxShadow: 3, borderRadius: 2, minWidth: 350, maxWidth: 400, width: '100%' }}>
         <Typography variant="h4" component="h2" gutterBottom>
           Login Page
         </Typography>
-        <Box component="form" noValidate autoComplete="off">
+        <Box component="form" noValidate autoComplete="off" onSubmit={handleLogin}>
           <TextField
-            label="Username"
+            label="Email"
             variant="outlined"
             fullWidth
             margin="normal"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
           />
           <TextField
             label="Password"
@@ -21,9 +75,27 @@ const Login: React.FC = () => {
             variant="outlined"
             fullWidth
             margin="normal"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
           />
-          <Button variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+          <Snackbar open={openError} autoHideDuration={4000} onClose={() => setOpenError(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+            <Alert onClose={() => setOpenError(false)} severity="error" sx={{ width: '100%' }}>
+              {error}
+            </Alert>
+          </Snackbar>
+          <Snackbar open={openSuccess} autoHideDuration={4000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+            <Alert onClose={() => setOpenSuccess(false)} severity="success" sx={{ width: '100%' }}>
+              {success}
+            </Alert>
+          </Snackbar>
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
             Login
+          </Button>
+          <Button onClick={handleGoogleLogin} variant="outlined" color="primary" fullWidth sx={{ mt: 2 }}>
+            Sign in with Google
+          </Button>
+          <Button onClick={handleForgotPassword} variant="text" color="secondary" fullWidth sx={{ mt: 2 }}>
+            Forgot Password?
           </Button>
         </Box>
       </Box>
