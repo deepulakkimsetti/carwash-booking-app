@@ -22,6 +22,7 @@ const services = [
   {
     title: 'Interior Cleaning',
     description: 'Deep cleaning of seats, mats, and dashboard for a fresh interior.',
+  description: 'Deep cleaning of seats, mats, and service booking for a fresh interior.',
     icon: <CleaningServicesIcon sx={{ fontSize: 60, color: 'primary.main' }} />,
   },
   {

@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Container, Box, Typography, TextField, Button, Snackbar, Alert } from '@mui/material';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { ref, get } from 'firebase/database';
 import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
@@ -10,8 +11,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [openError, setOpenError] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [openSuccess, setOpenSuccess] = useState(false);
+  // Success Snackbar state removed
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -19,7 +19,9 @@ const Login: React.FC = () => {
     setError('');
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/dashboard');
+      setTimeout(() => {
+        navigate('/service-booking', { state: { loginSuccess: true } });
+      }, 1200);
     } catch (err: any) {
       setError(err.message);
       setOpenError(true);
@@ -30,8 +32,19 @@ const Login: React.FC = () => {
     setError('');
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      navigate('/dashboard');
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      // Check if user profile exists in DB
+      const userRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(userRef);
+      const data = snapshot.val();
+      setTimeout(() => {
+        if (!data || !data.fullName || !data.phone || !data.address || !data.role) {
+          navigate('/capture-details');
+        } else {
+          navigate('/service-booking', { state: { loginSuccess: true } });
+        }
+      }, 1200);
     } catch (err: any) {
       setError(err.message);
       setOpenError(true);
@@ -46,8 +59,9 @@ const Login: React.FC = () => {
     }
     try {
       await sendPasswordResetEmail(auth, email);
-      setSuccess('Password reset email sent!');
-      setOpenSuccess(true);
+      // Optionally, you can show a success message here using error Snackbar
+      setError('Password reset email sent!');
+      setOpenError(true);
     } catch (err: any) {
       setError(err.message);
       setOpenError(true);
@@ -83,11 +97,7 @@ const Login: React.FC = () => {
               {error}
             </Alert>
           </Snackbar>
-          <Snackbar open={openSuccess} autoHideDuration={4000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
-            <Alert onClose={() => setOpenSuccess(false)} severity="success" sx={{ width: '100%' }}>
-              {success}
-            </Alert>
-          </Snackbar>
+          {/* Success Snackbar removed to avoid duplicate popup. Popup will show on ServiceBooking page only. */}
           <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
             Login
           </Button>
