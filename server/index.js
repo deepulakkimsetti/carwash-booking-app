@@ -1,7 +1,24 @@
 const express = require('express');
 const sql = require('mssql');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 const app = express();
 app.use(express.json());
+
+// Swagger setup
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'CarWash Booking API',
+      version: '1.0.0',
+      description: 'API documentation for CarWash Booking App',
+    },
+  },
+  apis: ['./index.js'],
+};
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Azure SQL config - using provided credentials
 const dbConfig = {
@@ -24,21 +41,19 @@ sql.connect(dbConfig).then(pool => {
 });
 
 
-// Helper: Table schemas
+// Helper: Table schemas (updated)
 const tableSchemas = {
-  Bookings: ['booking_id','customer_id','service_id','subscription_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
+  Bookings: ['booking_id','customer_id','service_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
   database_firewall_rules: ['id','name','start_ip_address','end_ip_address','create_date','modify_date'],
   Notifications: ['notification_id','user_id','message','type','is_read','created_at'],
   Payments: ['payment_id','booking_id','amount','payment_method','payment_status','transaction_date'],
   Products: ['ProductID','ProductName','Price','ProductDescription'],
   ProfessionalAllocation: ['allocation_id','booking_id','professional_id','assigned_at','status'],
   ProfessionalSkills: ['skill_id','professional_id','service_id','proficiency_level'],
-  Services: ['service_id','service_name','description','service_type','base_price','duration_minutes','created_at'],
-  Subscriptions: ['subscription_id','name','description','price','frequency','duration_months','created_at'],
-  Users: ['user_id','full_name','email','phone_number','password_hash','role','created_at','updated_at']
+  Services: ['service_id','service_name','description','service_type','base_price','duration_minutes','created_at']
 };
 
-// Helper: Primary keys for each table
+// Helper: Primary keys for each table (updated)
 const tablePKs = {
   Bookings: 'booking_id',
   database_firewall_rules: 'id',
@@ -47,17 +62,30 @@ const tablePKs = {
   Products: 'ProductID',
   ProfessionalAllocation: 'allocation_id',
   ProfessionalSkills: 'skill_id',
-  Services: 'service_id',
-  Subscriptions: 'subscription_id',
-  Users: 'user_id'
+  Services: 'service_id'
 };
 
-// Generic CRUD routes for each table
+// Generic CRUD routes for each table (updated)
 Object.keys(tableSchemas).forEach(table => {
   const pk = tablePKs[table];
   const columns = tableSchemas[table];
 
-  // GET all
+  /**
+   * @swagger
+   * /api/{table}:
+   *   get:
+   *     summary: Get all records from {table}
+   *     tags: [{table}]
+   *     responses:
+   *       200:
+   *         description: List of records
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   */
   app.get(`/api/${table}`, async (req, res) => {
     try {
       const result = await sql.query(`SELECT * FROM ${table}`);
@@ -67,22 +95,55 @@ Object.keys(tableSchemas).forEach(table => {
     }
   });
 
-  // GET by id
+  /**
+   * @swagger
+   * /api/{table}/:{pk}:
+   *   get:
+   *     summary: Get a record by ID from {table}
+   *     tags: [{table}]
+   *     parameters:
+   *       - in: path
+   *         name: {pk}
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Record object
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   */
   app.get(`/api/${table}/:${pk}`, async (req, res) => {
     try {
-      const result = await sql.query(`SELECT * FROM ${table} WHERE ${pk} = @id`, {
-        id: req.params[pk]
-      });
+      const request = new sql.Request();
+      request.input('id', req.params[pk]);
+      const result = await request.query(`SELECT * FROM ${table} WHERE ${pk} = @id`);
       res.json(result.recordset[0]);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  // POST (create)
+  /**
+   * @swagger
+   * /api/{table}:
+   *   post:
+   *     summary: Create a new record in {table}
+   *     tags: [{table}]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       201:
+   *         description: Created
+   */
   app.post(`/api/${table}`, async (req, res) => {
     try {
-      const values = columns.map(col => req.body[col]);
       const colsStr = columns.join(', ');
       const paramsStr = columns.map((_, i) => `@param${i}`).join(', ');
       const request = new sql.Request();
@@ -94,7 +155,28 @@ Object.keys(tableSchemas).forEach(table => {
     }
   });
 
-  // PUT (update)
+  /**
+   * @swagger
+   * /api/{table}/:{pk}:
+   *   put:
+   *     summary: Update a record by ID in {table}
+   *     tags: [{table}]
+   *     parameters:
+   *       - in: path
+   *         name: {pk}
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: Updated
+   */
   app.put(`/api/${table}/:${pk}`, async (req, res) => {
     try {
       const setStr = columns.filter(col => col !== pk).map((col, i) => `${col} = @param${i}`).join(', ');
@@ -108,7 +190,22 @@ Object.keys(tableSchemas).forEach(table => {
     }
   });
 
-  // DELETE
+  /**
+   * @swagger
+   * /api/{table}/:{pk}:
+   *   delete:
+   *     summary: Delete a record by ID from {table}
+   *     tags: [{table}]
+   *     parameters:
+   *       - in: path
+   *         name: {pk}
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Deleted
+   */
   app.delete(`/api/${table}/:${pk}`, async (req, res) => {
     try {
       const request = new sql.Request();
