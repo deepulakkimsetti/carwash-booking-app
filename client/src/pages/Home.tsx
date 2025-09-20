@@ -14,18 +14,18 @@ import LocalCarWashIcon from '@mui/icons-material/LocalCarWash';
 
 const services = [
   {
-    title: 'Exterior Wash',
-    description: 'Thorough cleaning of your vehicle’s exterior for a sparkling finish.',
+    title: 'Basic Wash',
+    description: 'A quick and efficient exterior clean to keep your car looking fresh. Includes high-pressure rinse, foam wash, and spot-free drying — perfect for regular maintenance and a clean drive every time.',
     icon: <LocalCarWashIcon sx={{ fontSize: 60, color: 'primary.main' }} />,
   },
   {
-    title: 'Interior Cleaning',
-    description: 'Deep cleaning of seats, mats, and dashboard for a fresh interior.',
+    title: 'Premium Wash',
+    description: 'Take your car care up a notch. Our Premium Wash includes everything in the Basic package, plus tire cleaning, wax polish, and interior vacuuming. Ideal for those who want a deeper clean and a showroom shine.',
     icon: <CleaningServicesIcon sx={{ fontSize: 60, color: 'primary.main' }} />,
   },
   {
-    title: 'Wax & Polish',
-    description: 'Premium waxing and polishing for long-lasting shine and protection.',
+    title: 'Ultimate Detailing',
+    description: 'The full spa treatment for your vehicle. Our Ultimate Detailing service covers exterior polishing, interior shampooing, dashboard conditioning, engine bay cleaning, and ceramic coating options. Designed for car lovers who want nothing but the best.',
     icon: <DirectionsCarIcon sx={{ fontSize: 60, color: 'primary.main' }} />,
   },
 ];
@@ -90,7 +90,7 @@ const Home: React.FC = () => (
             Experienced Professionals
           </Typography>
           <Typography color="text.secondary" align="center">
-            Our team is trained to deliver the best cleaning experience for your vehicle.
+            Our team brings years of hands-on expertise to every wash and detail. From basic cleans to ultimate treatments, your vehicle is in the care of skilled professionals who treat every car like their own.
           </Typography>
         </Grid>
   <Grid item xs={12} md={4}>
@@ -98,7 +98,7 @@ const Home: React.FC = () => (
             Eco-Friendly Products
           </Typography>
           <Typography color="text.secondary" align="center">
-            We use safe and eco-friendly cleaning products for your car and the environment.
+            We believe in a clean car and a clean planet. That’s why we use biodegradable soaps, water-saving techniques, and non-toxic detailing products — delivering shine without compromise.
           </Typography>
         </Grid>
   <Grid item xs={12} md={4}>
@@ -106,7 +106,7 @@ const Home: React.FC = () => (
             Convenient Booking
           </Typography>
           <Typography color="text.secondary" align="center">
-            Book online and get your car cleaned at your preferred time and location.
+            Life’s busy. Getting your car cleaned shouldn’t be. With our easy online booking system and flexible time slots, you can schedule your wash in seconds — no waiting, no hassle.
           </Typography>
         </Grid>
       </Grid>

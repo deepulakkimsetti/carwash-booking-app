@@ -14,9 +14,9 @@ import {
 } from '@mui/material';
 
 const services = [
-  { title: 'Basic Wash', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', price: 300 },
-  { title: 'Premium Wash', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', price: 500 },
-  { title: 'Ultimate Detail', description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.', price: 700 },
+  { title: 'Basic Wash', description: 'A quick and efficient exterior clean to keep your car looking fresh. Includes high-pressure rinse, foam wash, and spot-free drying — perfect for regular maintenance and a clean drive every time.', price: 300 },
+  { title: 'Premium Wash', description: 'Take your car care up a notch. Our Premium Wash includes everything in the Basic package, plus tire cleaning, wax polish, and interior vacuuming. Ideal for those who want a deeper clean and a showroom shine.', price: 500 },
+  { title: 'Ultimate Detailing', description: 'The full spa treatment for your vehicle. Our Ultimate Detailing service covers exterior polishing, interior shampooing, dashboard conditioning, engine bay cleaning, and ceramic coating options. Designed for car lovers who want nothing but the best.', price: 700 },
 ];
 
 const pricingTable: Record<string, Record<string, number>> = {
