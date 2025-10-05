@@ -50,12 +50,19 @@ const pricingTable: Record<string, Record<string, number>> = {
 
 const steps = ['Select Service', 'Details', 'Confirm'];
 
+const locationOptions = {
+  Hyderabad: ['HiTech City', 'Madhapur', 'Gachibowli', 'Lingampally', 'Ameenpur', 'Kukatpally', 'Bachupally', 'Miyapur', 'Kondapur', 'Manikonda', 'Narsingi', 'Serilingampally'],
+  Bangalore: ['MG Road', 'Indiranagar', 'Koramangala', 'Whitefield', 'Jayanagar', 'HSR Layout', 'BTM Layout', 'Marathahalli', 'Electronic City', 'Sarjapur Road', 'Yelahanka', 'Hebbal']
+};
+
 const ServiceBooking: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [carType, setCarType] = useState<string>('');
+  const [city, setCity] = useState<string>('');
+  const [nearestLocation, setNearestLocation] = useState<string>('');
   const [openSuccess, setOpenSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -202,10 +209,49 @@ const ServiceBooking: React.FC = () => {
                   <option value="SUV">SUV</option>
                 </select>
               </Box>
+              
+              {/* City and Nearest Location Side by Side */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, mb: 2 }}>
+                {/* City */}
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
+                    City
+                  </Typography>
+                  <select
+                    value={city}
+                    onChange={e => {
+                      setCity(e.target.value);
+                      setNearestLocation(''); // Reset nearest location when city changes
+                    }}
+                    style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', width: '220px', background: '#fff', outline: 'none' }}
+                  >
+                    <option value="">Select City</option>
+                    <option value="Hyderabad">Hyderabad</option>
+                    <option value="Bangalore">Bangalore</option>
+                  </select>
+                </Box>
+                {/* Nearest Location */}
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
+                    Nearest Location
+                  </Typography>
+                  <select
+                    value={nearestLocation}
+                    onChange={e => setNearestLocation(e.target.value)}
+                    disabled={!city}
+                    style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', width: '220px', background: city ? '#fff' : '#f5f5f5', outline: 'none' }}
+                  >
+                    <option value="">Select Location</option>
+                    {city && locationOptions[city as keyof typeof locationOptions]?.map(location => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                  </select>
+                </Box>
+              </Box>
               {/* Date and Time Side by Side */}
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
                 {/* Date */}
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
                   <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
                     Date
                   </Typography>
@@ -218,7 +264,7 @@ const ServiceBooking: React.FC = () => {
                   />
                 </Box>
                 {/* Time */}
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
                   <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
                     Time
                   </Typography>
@@ -261,7 +307,7 @@ const ServiceBooking: React.FC = () => {
                 color="success"
                 size="large"
                 sx={{ borderRadius: 2, fontWeight: 700, minWidth: 120, m: 0 }}
-                disabled={!selectedDate || !selectedTime}
+                disabled={!selectedDate || !selectedTime || !carType || !city || !nearestLocation}
                 onClick={() => setActiveStep(2)}
               >
                 Next
@@ -281,6 +327,12 @@ const ServiceBooking: React.FC = () => {
               </Typography>
               <Typography variant="subtitle1" fontWeight={600}>
                 Car Type: {carType || '-'}
+              </Typography>
+              <Typography variant="subtitle1" fontWeight={600}>
+                City: {city || '-'}
+              </Typography>
+              <Typography variant="subtitle1" fontWeight={600}>
+                Nearest Location: {nearestLocation || '-'}
               </Typography>
               <Typography variant="subtitle1" fontWeight={600}>
                 Selected Date: {selectedDate || '-'}
