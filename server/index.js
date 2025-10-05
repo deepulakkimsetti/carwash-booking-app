@@ -6,6 +6,8 @@ const app = express();
 app.use(express.json());
 
 // Swagger setup
+const path = require('path');
+
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -14,11 +16,95 @@ const swaggerOptions = {
       version: '1.0.0',
       description: 'API documentation for CarWash Booking App',
     },
+    servers: [
+      {
+        url: process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.WEBSITE_HOSTNAME || 'localhost'}` 
+          : 'http://localhost:3001',
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
+      }
+    ],
   },
-  apis: ['./index.js'],
+  // Fix for Azure: Use absolute path and multiple path patterns
+  apis: [
+    path.join(__dirname, 'index.js'),
+    __filename,
+    './index.js',
+    './*.js'
+  ],
 };
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+let swaggerSpec;
+try {
+  swaggerSpec = swaggerJsdoc(swaggerOptions);
+  
+  // Fallback for Azure: if no paths found, use manual spec
+  if (!swaggerSpec.paths || Object.keys(swaggerSpec.paths).length === 0) {
+    console.log('⚠️  No paths found in auto-generated spec, using manual fallback');
+    const manualSwaggerSpec = require('./swagger-manual');
+    swaggerSpec = manualSwaggerSpec;
+  }
+} catch (error) {
+  console.error('❌ Error generating Swagger spec:', error);
+  console.log('🔄 Using manual Swagger specification');
+  const manualSwaggerSpec = require('./swagger-manual');
+  swaggerSpec = manualSwaggerSpec;
+}
+
+// Debug logging for Azure
+console.log('🔍 Swagger Debug Info:');
+console.log('- Current directory:', __dirname);
+console.log('- Current filename:', __filename);
+console.log('- Swagger paths found:', Object.keys(swaggerSpec.paths || {}).length);
+console.log('- Available paths:', Object.keys(swaggerSpec.paths || {}));
+
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'CarWash API Documentation'
+}));
+
+// Debug endpoint to check swagger spec
+app.get('/swagger.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// Health check endpoint
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API is running
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ */
+app.get('/', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'CarWash Booking API is running!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    documentation: '/api-docs',
+    swaggerJson: '/swagger.json',
+    swaggerPathsCount: Object.keys(swaggerSpec.paths || {}).length
+  });
+});
 
 // Azure SQL config - using environment variables for production
 const dbConfig = {
