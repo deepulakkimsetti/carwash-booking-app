@@ -5,6 +5,9 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const app = express();
 app.use(express.json());
 
+// Serve static files
+app.use('/public', express.static('public'));
+
 // Swagger setup
 const path = require('path');
 
@@ -36,19 +39,67 @@ const swaggerOptions = {
 
 let swaggerSpec;
 try {
+  console.log('🔄 Attempting to generate Swagger spec...');
   swaggerSpec = swaggerJsdoc(swaggerOptions);
+  console.log('✅ Swagger spec generated, paths found:', Object.keys(swaggerSpec.paths || {}).length);
   
   // Fallback for Azure: if no paths found, use manual spec
   if (!swaggerSpec.paths || Object.keys(swaggerSpec.paths).length === 0) {
     console.log('⚠️  No paths found in auto-generated spec, using manual fallback');
-    const manualSwaggerSpec = require('./swagger-manual');
-    swaggerSpec = manualSwaggerSpec;
+    try {
+      const manualSwaggerSpec = require('./swagger-manual');
+      swaggerSpec = manualSwaggerSpec;
+      console.log('✅ Manual Swagger spec loaded');
+    } catch (manualError) {
+      console.error('❌ Failed to load manual spec:', manualError);
+      // Create a basic fallback spec
+      swaggerSpec = {
+        openapi: '3.0.0',
+        info: {
+          title: 'CarWash Booking API',
+          version: '1.0.0',
+          description: 'API documentation for CarWash Booking App',
+        },
+        paths: {}
+      };
+    }
   }
 } catch (error) {
   console.error('❌ Error generating Swagger spec:', error);
   console.log('🔄 Using manual Swagger specification');
-  const manualSwaggerSpec = require('./swagger-manual');
-  swaggerSpec = manualSwaggerSpec;
+  try {
+    const manualSwaggerSpec = require('./swagger-manual');
+    swaggerSpec = manualSwaggerSpec;
+    console.log('✅ Manual Swagger spec loaded as fallback');
+  } catch (manualError) {
+    console.error('❌ Failed to load manual spec:', manualError);
+    // Create a minimal working spec
+    swaggerSpec = {
+      openapi: '3.0.0',
+      info: {
+        title: 'CarWash Booking API',
+        version: '1.0.0',
+        description: 'API documentation for CarWash Booking App - Minimal fallback',
+      },
+      servers: [{
+        url: process.env.NODE_ENV === 'production' 
+          ? `https://${process.env.WEBSITE_HOSTNAME}` 
+          : 'http://localhost:3001',
+        description: 'API Server'
+      }],
+      paths: {
+        '/': {
+          get: {
+            summary: 'Health check endpoint',
+            responses: {
+              '200': { description: 'API is running' }
+            }
+          }
+        }
+      }
+    };
+    console.log('✅ Minimal fallback spec created');
+  }
 }
 
 // Debug logging for Azure
@@ -58,18 +109,117 @@ console.log('- Current filename:', __filename);
 console.log('- Swagger paths found:', Object.keys(swaggerSpec.paths || {}).length);
 console.log('- Available paths:', Object.keys(swaggerSpec.paths || {}));
 
-// Swagger UI setup
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+// Swagger UI setup - Fixed for Azure
+console.log('🔧 Setting up Swagger UI routes...');
+
+// Method 1: Standard setup
+try {
+  app.use('/api-docs', swaggerUi.serve);
+  app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'CarWash API Documentation'
+  }));
+  console.log('✅ Standard Swagger UI setup complete');
+} catch (error) {
+  console.error('❌ Error setting up standard Swagger UI:', error);
+}
+
+// Alternative Swagger UI route (fallback)
+app.get('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'CarWash API Documentation'
+  customSiteTitle: 'CarWash API Documentation - Alternative'
 }));
+
+// Manual backup route for Swagger UI
+app.get('/swagger-ui', (req, res) => {
+  try {
+    if (!swaggerSpec) {
+      return res.status(500).send('Swagger specification not available');
+    }
+    
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>CarWash API Documentation</title>
+      <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui.css" />
+    </head>
+    <body>
+      <div id="swagger-ui"></div>
+      <script src="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui-bundle.js"></script>
+      <script>
+        SwaggerUIBundle({
+          url: '/swagger.json',
+          dom_id: '#swagger-ui',
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIBundle.presets.standalone
+          ]
+        });
+      </script>
+    </body>
+    </html>`;
+    
+    res.send(html);
+  } catch (error) {
+    console.error('❌ Error in /swagger-ui route:', error);
+    res.status(500).send('Error loading Swagger UI: ' + error.message);
+  }
+});
+
+// Static Swagger HTML page (backup method)
+app.get('/api-docs-static', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'swagger.html'));
+});
+
+// Redirect /api-docs to static version if dynamic fails
+app.get('/api-docs-fallback', (req, res) => {
+  res.redirect('/api-docs-static');
+});
+
+console.log('✅ Swagger UI routes configured');
 
 // Debug endpoint to check swagger spec
 app.get('/swagger.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    
+    // Ensure we have a valid swagger spec
+    if (!swaggerSpec) {
+      console.log('📝 Swagger spec is null, creating basic spec');
+      const basicSpec = {
+        openapi: '3.0.0',
+        info: {
+          title: 'CarWash Booking API',
+          version: '1.0.0',
+          description: 'API documentation for CarWash Booking App',
+        },
+        servers: [{
+          url: `https://${req.get('host')}`,
+          description: 'Production server'
+        }],
+        paths: {
+          '/': {
+            get: {
+              summary: 'Health check',
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        }
+      };
+      return res.json(basicSpec);
+    }
+    
+    console.log('📤 Sending swagger spec with', Object.keys(swaggerSpec.paths || {}).length, 'paths');
+    res.json(swaggerSpec);
+  } catch (error) {
+    console.error('❌ Error in /swagger.json route:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate Swagger specification',
+      message: error.message 
+    });
+  }
 });
 
 // Health check endpoint
@@ -100,9 +250,39 @@ app.get('/', (req, res) => {
     message: 'CarWash Booking API is running!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    host: req.get('host'),
+    url: `${req.protocol}://${req.get('host')}`,
     documentation: '/api-docs',
     swaggerJson: '/swagger.json',
-    swaggerPathsCount: Object.keys(swaggerSpec.paths || {}).length
+    swaggerPathsCount: Object.keys(swaggerSpec?.paths || {}).length,
+    swaggerSpecExists: !!swaggerSpec
+  });
+});
+
+// Simple test route
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Test route working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Debug route to check all registered routes
+app.get('/debug/routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(function(r){
+    if (r.route && r.route.path){
+      routes.push({
+        method: Object.keys(r.route.methods)[0].toUpperCase(),
+        path: r.route.path
+      });
+    }
+  });
+  res.json({
+    message: 'All registered routes',
+    routes: routes,
+    swaggerSpecExists: !!swaggerSpec,
+    swaggerPathsCount: Object.keys(swaggerSpec?.paths || {}).length
   });
 });
 
