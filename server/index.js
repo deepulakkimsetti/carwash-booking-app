@@ -20,14 +20,15 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Azure SQL config - using provided credentials
+// Azure SQL config - using environment variables for production
 const dbConfig = {
-  user: 'sqladmin',
-  password: 'Haneesh@77',
-  server: 'carwashservicesqlserver.database.windows.net',
-  database: 'CarwashserviceDB',
+  user: process.env.DB_USER || 'sqladmin',
+  password: process.env.DB_PASSWORD || 'Haneesh@77',
+  server: process.env.DB_SERVER || 'carwashservicesqlserver.database.windows.net',
+  database: process.env.DB_NAME || 'CarwashserviceDB',
   options: {
-    encrypt: true
+    encrypt: true,
+    enableArithAbort: true
   }
 };
 
