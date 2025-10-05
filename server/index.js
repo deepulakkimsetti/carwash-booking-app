@@ -218,6 +218,41 @@ Object.keys(tableSchemas).forEach(table => {
   });
 });
 
+// Custom API endpoint for car details (only car_id and car_type)
+/**
+ * @swagger
+ * /api/car-details:
+ *   get:
+ *     summary: Get car details with only car_id and car_type
+ *     tags: [Car Details]
+ *     responses:
+ *       200:
+ *         description: List of cars with car_id and car_type only
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   car_id:
+ *                     type: integer
+ *                     description: Unique identifier for the car
+ *                   car_type:
+ *                     type: string
+ *                     description: Type of the car (e.g., Sedan, SUV, Hatchback)
+ *       500:
+ *         description: Server error
+ */
+app.get('/api/car-details', async (req, res) => {
+  try {
+    const result = await sql.query('SELECT id, type FROM cars');
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

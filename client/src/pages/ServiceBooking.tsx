@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Snackbar, Alert } from '@mui/material';
 import {
@@ -55,17 +55,60 @@ const locationOptions = {
   Bangalore: ['MG Road', 'Indiranagar', 'Koramangala', 'Whitefield', 'Jayanagar', 'HSR Layout', 'BTM Layout', 'Marathahalli', 'Electronic City', 'Sarjapur Road', 'Yelahanka', 'Hebbal']
 };
 
+interface CarType {
+  car_id: string;
+  car_type: string;
+}
+
 const ServiceBooking: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [carType, setCarType] = useState<string>('');
+  const [carTypes, setCarTypes] = useState<CarType[]>([]);
+  const [loadingCarTypes, setLoadingCarTypes] = useState(false);
   const [city, setCity] = useState<string>('');
   const [nearestLocation, setNearestLocation] = useState<string>('');
   const [openSuccess, setOpenSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Fetch car types from API
+  useEffect(() => {
+    const fetchCarTypes = async () => {
+      setLoadingCarTypes(true);
+      try {
+        const response = await fetch('/api/car-details');
+        if (response.ok) {
+          const data = await response.json();
+          setCarTypes(data);
+        } else {
+          console.error('Failed to fetch car types');
+          // Fallback to hardcoded values if API fails
+          setCarTypes([
+            { car_id: 'mini', car_type: 'Mini' },
+            { car_id: 'hatchback', car_type: 'Hatchback' },
+            { car_id: 'sedan', car_type: 'Sedan' },
+            { car_id: 'mpv', car_type: 'MPV' },
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching car types:', error);
+        // Fallback to hardcoded values if API fails
+        setCarTypes([
+          { car_id: 'mini', car_type: 'Mini' },
+          { car_id: 'hatchback', car_type: 'Hatchback' },
+          { car_id: 'sedan', car_type: 'Sedan' },
+          { car_id: 'mpv', car_type: 'MPV' },
+        ]);
+      } finally {
+        setLoadingCarTypes(false);
+      }
+    };
+
+    fetchCarTypes();
+  }, []);
 
   React.useEffect(() => {
     if (location.state && location.state.loginSuccess) {
@@ -199,14 +242,24 @@ const ServiceBooking: React.FC = () => {
                 <select
                   value={carType}
                   onChange={e => setCarType(e.target.value)}
-                  style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', width: '220px', background: '#fff', outline: 'none' }}
+                  disabled={loadingCarTypes}
+                  style={{ 
+                    padding: '10px', 
+                    fontSize: '16px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #ccc', 
+                    width: '220px', 
+                    background: loadingCarTypes ? '#f5f5f5' : '#fff', 
+                    outline: 'none',
+                    cursor: loadingCarTypes ? 'wait' : 'pointer'
+                  }}
                 >
-                  <option value="">Select Car Type</option>
-                  <option value="Mini">Mini</option>
-                  <option value="Hatchback">Hatchback</option>
-                  <option value="Sedan">Sedan</option>
-                  <option value="MPV">MPV</option>
-                  <option value="SUV">SUV</option>
+                  <option value="">{loadingCarTypes ? 'Loading...' : 'Select Car Type'}</option>
+                  {carTypes.map((car) => (
+                    <option key={car.car_id} value={car.car_id}>
+                      {car.car_type}
+                    </option>
+                  ))}
                 </select>
               </Box>
               
