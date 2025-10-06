@@ -2,6 +2,8 @@ const express = require('express');
 const sql = require('mssql');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
+const path = require('path');
+
 const app = express();
 app.use(express.json());
 
@@ -9,8 +11,6 @@ app.use(express.json());
 app.use('/public', express.static('public'));
 
 // Swagger setup
-const path = require('path');
-
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -22,271 +22,34 @@ const swaggerOptions = {
     servers: [
       {
         url: process.env.NODE_ENV === 'production' 
-          ? `https://${process.env.WEBSITE_HOSTNAME || 'localhost'}` 
+          ? `https://${process.env.WEBSITE_HOSTNAME}` 
           : 'http://localhost:3001',
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ],
   },
-  // Fix for Azure: Use absolute path and multiple path patterns
-  apis: [
-    path.join(__dirname, 'index.js'),
-    __filename,
-    './index.js',
-    './*.js'
-  ],
+  apis: [__filename]
 };
 
+// Generate Swagger specification
 let swaggerSpec;
 try {
-  console.log('🔄 Attempting to generate Swagger spec...');
   swaggerSpec = swaggerJsdoc(swaggerOptions);
-  console.log('✅ Swagger spec generated, paths found:', Object.keys(swaggerSpec.paths || {}).length);
-  
-  // Fallback for Azure: if no paths found, use manual spec
-  if (!swaggerSpec.paths || Object.keys(swaggerSpec.paths).length === 0) {
-    console.log('⚠️  No paths found in auto-generated spec, using manual fallback');
-    try {
-      const manualSwaggerSpec = require('./swagger-manual');
-      swaggerSpec = manualSwaggerSpec;
-      console.log('✅ Manual Swagger spec loaded');
-    } catch (manualError) {
-      console.error('❌ Failed to load manual spec:', manualError);
-      // Create a basic fallback spec
-      swaggerSpec = {
-        openapi: '3.0.0',
-        info: {
-          title: 'CarWash Booking API',
-          version: '1.0.0',
-          description: 'API documentation for CarWash Booking App',
-        },
-        paths: {}
-      };
-    }
-  }
+  console.log('✅ Swagger spec generated with', Object.keys(swaggerSpec.paths || {}).length, 'paths');
 } catch (error) {
   console.error('❌ Error generating Swagger spec:', error);
-  console.log('🔄 Using manual Swagger specification');
-  try {
-    const manualSwaggerSpec = require('./swagger-manual');
-    swaggerSpec = manualSwaggerSpec;
-    console.log('✅ Manual Swagger spec loaded as fallback');
-  } catch (manualError) {
-    console.error('❌ Failed to load manual spec:', manualError);
-    // Create a minimal working spec
-    swaggerSpec = {
-      openapi: '3.0.0',
-      info: {
-        title: 'CarWash Booking API',
-        version: '1.0.0',
-        description: 'API documentation for CarWash Booking App - Minimal fallback',
-      },
-      servers: [{
-        url: process.env.NODE_ENV === 'production' 
-          ? `https://${process.env.WEBSITE_HOSTNAME}` 
-          : 'http://localhost:3001',
-        description: 'API Server'
-      }],
-      paths: {
-        '/': {
-          get: {
-            summary: 'Health check endpoint',
-            responses: {
-              '200': { description: 'API is running' }
-            }
-          }
-        }
-      }
-    };
-    console.log('✅ Minimal fallback spec created');
-  }
+  swaggerSpec = {
+    openapi: '3.0.0',
+    info: { title: 'CarWash API', version: '1.0.0' },
+    paths: {}
+  };
 }
 
-// Debug logging for Azure
-console.log('🔍 Swagger Debug Info:');
-console.log('- Current directory:', __dirname);
-console.log('- Current filename:', __filename);
-console.log('- Swagger paths found:', Object.keys(swaggerSpec.paths || {}).length);
-console.log('- Available paths:', Object.keys(swaggerSpec.paths || {}));
+// Swagger UI routes
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/swagger.json', (req, res) => res.json(swaggerSpec));
 
-// Swagger UI setup - Fixed for Azure
-console.log('🔧 Setting up Swagger UI routes...');
-
-// Method 1: Standard setup
-try {
-  app.use('/api-docs', swaggerUi.serve);
-  app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
-    explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'CarWash API Documentation'
-  }));
-  console.log('✅ Standard Swagger UI setup complete');
-} catch (error) {
-  console.error('❌ Error setting up standard Swagger UI:', error);
-}
-
-// Alternative Swagger UI route (fallback)
-app.get('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customSiteTitle: 'CarWash API Documentation - Alternative'
-}));
-
-// Manual backup route for Swagger UI
-app.get('/swagger-ui', (req, res) => {
-  try {
-    if (!swaggerSpec) {
-      return res.status(500).send('Swagger specification not available');
-    }
-    
-    const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>CarWash API Documentation</title>
-      <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui.css" />
-    </head>
-    <body>
-      <div id="swagger-ui"></div>
-      <script src="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui-bundle.js"></script>
-      <script>
-        SwaggerUIBundle({
-          url: '/swagger.json',
-          dom_id: '#swagger-ui',
-          presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIBundle.presets.standalone
-          ]
-        });
-      </script>
-    </body>
-    </html>`;
-    
-    res.send(html);
-  } catch (error) {
-    console.error('❌ Error in /swagger-ui route:', error);
-    res.status(500).send('Error loading Swagger UI: ' + error.message);
-  }
-});
-
-// Static Swagger HTML page (backup method)
-app.get('/api-docs-static', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'swagger.html'));
-});
-
-// Redirect /api-docs to static version if dynamic fails
-app.get('/api-docs-fallback', (req, res) => {
-  res.redirect('/api-docs-static');
-});
-
-console.log('✅ Swagger UI routes configured');
-
-// Debug endpoint to check swagger spec
-app.get('/swagger.json', (req, res) => {
-  try {
-    res.setHeader('Content-Type', 'application/json');
-    
-    // Ensure we have a valid swagger spec
-    if (!swaggerSpec) {
-      console.log('📝 Swagger spec is null, creating basic spec');
-      const basicSpec = {
-        openapi: '3.0.0',
-        info: {
-          title: 'CarWash Booking API',
-          version: '1.0.0',
-          description: 'API documentation for CarWash Booking App',
-        },
-        servers: [{
-          url: `https://${req.get('host')}`,
-          description: 'Production server'
-        }],
-        paths: {
-          '/': {
-            get: {
-              summary: 'Health check',
-              responses: { '200': { description: 'OK' } }
-            }
-          }
-        }
-      };
-      return res.json(basicSpec);
-    }
-    
-    console.log('📤 Sending swagger spec with', Object.keys(swaggerSpec.paths || {}).length, 'paths');
-    res.json(swaggerSpec);
-  } catch (error) {
-    console.error('❌ Error in /swagger.json route:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate Swagger specification',
-      message: error.message 
-    });
-  }
-});
-
-// Health check endpoint
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Health check endpoint
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: API is running
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status:
- *                   type: string
- *                 message:
- *                   type: string
- *                 timestamp:
- *                   type: string
- */
-app.get('/', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'CarWash Booking API is running!',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    host: req.get('host'),
-    url: `${req.protocol}://${req.get('host')}`,
-    documentation: '/api-docs',
-    swaggerJson: '/swagger.json',
-    swaggerPathsCount: Object.keys(swaggerSpec?.paths || {}).length,
-    swaggerSpecExists: !!swaggerSpec
-  });
-});
-
-// Simple test route
-app.get('/test', (req, res) => {
-  res.json({
-    message: 'Test route working!',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Debug route to check all registered routes
-app.get('/debug/routes', (req, res) => {
-  const routes = [];
-  app._router.stack.forEach(function(r){
-    if (r.route && r.route.path){
-      routes.push({
-        method: Object.keys(r.route.methods)[0].toUpperCase(),
-        path: r.route.path
-      });
-    }
-  });
-  res.json({
-    message: 'All registered routes',
-    routes: routes,
-    swaggerSpecExists: !!swaggerSpec,
-    swaggerPathsCount: Object.keys(swaggerSpec?.paths || {}).length
-  });
-});
-
-// Azure SQL config - using environment variables for production
+// Azure SQL config
 const dbConfig = {
   user: process.env.DB_USER || 'sqladmin',
   password: process.env.DB_PASSWORD || 'Haneesh@77',
@@ -307,10 +70,10 @@ sql.connect(dbConfig).then(pool => {
   console.error('Database connection failed:', err);
 });
 
-
-// Helper: Table schemas (updated)
+// Table schemas
 const tableSchemas = {
   Bookings: ['booking_id','customer_id','service_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
+  Car: ['car_id','car_type','customer_id','make','model','year','license_plate','color','created_at','updated_at'],
   database_firewall_rules: ['id','name','start_ip_address','end_ip_address','create_date','modify_date'],
   Notifications: ['notification_id','user_id','message','type','is_read','created_at'],
   Payments: ['payment_id','booking_id','amount','payment_method','payment_status','transaction_date'],
@@ -320,9 +83,10 @@ const tableSchemas = {
   Services: ['service_id','service_name','description','service_type','base_price','duration_minutes','created_at']
 };
 
-// Helper: Primary keys for each table (updated)
+// Primary keys
 const tablePKs = {
   Bookings: 'booking_id',
+  Car: 'car_id',
   database_firewall_rules: 'id',
   Notifications: 'notification_id',
   Payments: 'payment_id',
@@ -332,7 +96,98 @@ const tablePKs = {
   Services: 'service_id'
 };
 
-// Generic CRUD routes for each table (updated)
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Health check endpoint
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: API is running
+ */
+app.get('/', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'CarWash Booking API is running!',
+    timestamp: new Date().toISOString(),
+    documentation: '/api-docs',
+    swaggerJson: '/swagger.json'
+  });
+});
+
+/**
+ * @swagger
+ * /test:
+ *   get:
+ *     summary: Test endpoint
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Test successful
+ */
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Test route working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Custom car details endpoint
+/**
+ * @swagger
+ * /api/car-details:
+ *   get:
+ *     summary: Get car details with only car_id and car_type
+ *     tags: [Car Details]
+ *     responses:
+ *       200:
+ *         description: List of cars with car_id and car_type only
+ */
+app.get('/api/car-details', async (req, res) => {
+  try {
+    const result = await sql.query('SELECT car_id, car_type FROM Car');
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/car-details/{car_id}:
+ *   get:
+ *     summary: Get specific car details by car_id
+ *     tags: [Car Details]
+ *     parameters:
+ *       - in: path
+ *         name: car_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Car details
+ *       404:
+ *         description: Car not found
+ */
+app.get('/api/car-details/:car_id', async (req, res) => {
+  try {
+    const request = new sql.Request();
+    request.input('car_id', sql.Int, req.params.car_id);
+    const result = await request.query('SELECT car_id, car_type FROM Car WHERE car_id = @car_id');
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Car not found' });
+    }
+    
+    res.json(result.recordset[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Generic CRUD routes for each table
 Object.keys(tableSchemas).forEach(table => {
   const pk = tablePKs[table];
   const columns = tableSchemas[table];
@@ -341,17 +196,11 @@ Object.keys(tableSchemas).forEach(table => {
    * @swagger
    * /api/{table}:
    *   get:
-   *     summary: Get all records from {table}
+   *     summary: Get all records from table
    *     tags: [{table}]
    *     responses:
    *       200:
    *         description: List of records
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: array
-   *               items:
-   *                 type: object
    */
   app.get(`/api/${table}`, async (req, res) => {
     try {
@@ -364,29 +213,32 @@ Object.keys(tableSchemas).forEach(table => {
 
   /**
    * @swagger
-   * /api/{table}/:{pk}:
+   * /api/{table}/{id}:
    *   get:
-   *     summary: Get a record by ID from {table}
+   *     summary: Get record by ID
    *     tags: [{table}]
    *     parameters:
    *       - in: path
-   *         name: {pk}
+   *         name: id
    *         required: true
    *         schema:
    *           type: string
    *     responses:
    *       200:
-   *         description: Record object
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
+   *         description: Record found
+   *       404:
+   *         description: Record not found
    */
   app.get(`/api/${table}/:${pk}`, async (req, res) => {
     try {
       const request = new sql.Request();
       request.input('id', req.params[pk]);
       const result = await request.query(`SELECT * FROM ${table} WHERE ${pk} = @id`);
+      
+      if (result.recordset.length === 0) {
+        return res.status(404).json({ error: 'Record not found' });
+      }
+      
       res.json(result.recordset[0]);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -397,7 +249,7 @@ Object.keys(tableSchemas).forEach(table => {
    * @swagger
    * /api/{table}:
    *   post:
-   *     summary: Create a new record in {table}
+   *     summary: Create new record
    *     tags: [{table}]
    *     requestBody:
    *       required: true
@@ -406,17 +258,24 @@ Object.keys(tableSchemas).forEach(table => {
    *           schema:
    *             type: object
    *     responses:
-   *       201:
-   *         description: Created
+   *       200:
+   *         description: Record created
    */
   app.post(`/api/${table}`, async (req, res) => {
     try {
-      const colsStr = columns.join(', ');
-      const paramsStr = columns.map((_, i) => `@param${i}`).join(', ');
       const request = new sql.Request();
-      columns.forEach((col, i) => request.input(`param${i}`, req.body[col]));
-      await request.query(`INSERT INTO ${table} (${colsStr}) VALUES (${paramsStr})`);
-      res.status(201).json({ message: 'Created' });
+      const fields = columns.filter(col => col !== pk);
+      const values = fields.map(field => req.body[field]);
+      
+      fields.forEach((field, index) => {
+        request.input(field, values[index]);
+      });
+      
+      const placeholders = fields.map(field => `@${field}`).join(', ');
+      const query = `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${placeholders})`;
+      
+      await request.query(query);
+      res.json({ message: 'Created successfully' });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -424,13 +283,13 @@ Object.keys(tableSchemas).forEach(table => {
 
   /**
    * @swagger
-   * /api/{table}/:{pk}:
+   * /api/{table}/{id}:
    *   put:
-   *     summary: Update a record by ID in {table}
+   *     summary: Update record
    *     tags: [{table}]
    *     parameters:
    *       - in: path
-   *         name: {pk}
+   *         name: id
    *         required: true
    *         schema:
    *           type: string
@@ -442,16 +301,30 @@ Object.keys(tableSchemas).forEach(table => {
    *             type: object
    *     responses:
    *       200:
-   *         description: Updated
+   *         description: Record updated
    */
   app.put(`/api/${table}/:${pk}`, async (req, res) => {
     try {
-      const setStr = columns.filter(col => col !== pk).map((col, i) => `${col} = @param${i}`).join(', ');
       const request = new sql.Request();
-      columns.filter(col => col !== pk).forEach((col, i) => request.input(`param${i}`, req.body[col]));
+      const fields = columns.filter(col => col !== pk);
+      
       request.input('id', req.params[pk]);
-      await request.query(`UPDATE ${table} SET ${setStr} WHERE ${pk} = @id`);
-      res.json({ message: 'Updated' });
+      fields.forEach(field => {
+        if (req.body[field] !== undefined) {
+          request.input(field, req.body[field]);
+        }
+      });
+      
+      const updates = fields
+        .filter(field => req.body[field] !== undefined)
+        .map(field => `${field} = @${field}`)
+        .join(', ');
+      
+      if (updates) {
+        await request.query(`UPDATE ${table} SET ${updates} WHERE ${pk} = @id`);
+      }
+      
+      res.json({ message: 'Updated successfully' });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -459,68 +332,34 @@ Object.keys(tableSchemas).forEach(table => {
 
   /**
    * @swagger
-   * /api/{table}/:{pk}:
+   * /api/{table}/{id}:
    *   delete:
-   *     summary: Delete a record by ID from {table}
+   *     summary: Delete record
    *     tags: [{table}]
    *     parameters:
    *       - in: path
-   *         name: {pk}
+   *         name: id
    *         required: true
    *         schema:
    *           type: string
    *     responses:
    *       200:
-   *         description: Deleted
+   *         description: Record deleted
    */
   app.delete(`/api/${table}/:${pk}`, async (req, res) => {
     try {
       const request = new sql.Request();
       request.input('id', req.params[pk]);
       await request.query(`DELETE FROM ${table} WHERE ${pk} = @id`);
-      res.json({ message: 'Deleted' });
+      res.json({ message: 'Deleted successfully' });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
 });
 
-// Custom API endpoint for car details (only car_id and car_type)
-/**
- * @swagger
- * /api/car-details:
- *   get:
- *     summary: Get car details with only car_id and car_type
- *     tags: [Car Details]
- *     responses:
- *       200:
- *         description: List of cars with car_id and car_type only
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   car_id:
- *                     type: integer
- *                     description: Unique identifier for the car
- *                   car_type:
- *                     type: string
- *                     description: Type of the car (e.g., Sedan, SUV, Hatchback)
- *       500:
- *         description: Server error
- */
-app.get('/api/car-details', async (req, res) => {
-  try {
-    const result = await sql.query('SELECT id, type FROM cars');
-    res.json(result.recordset);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📚 Swagger Documentation: ${process.env.NODE_ENV === 'production' ? `https://${process.env.WEBSITE_HOSTNAME}` : `http://localhost:${PORT}`}/api-docs`);
 });
