@@ -564,6 +564,15 @@ app.get('/test', (req, res) => {
 });
 
 // Custom car details endpoint
+// Test route to verify routing is working
+app.get('/api/test-route', (req, res) => {
+  res.json({ 
+    message: 'Test route is working!', 
+    timestamp: new Date().toISOString(),
+    note: 'If you see this, routing is functional'
+  });
+});
+
 /**
  * @swagger
  * /api/car-details:
@@ -575,6 +584,7 @@ app.get('/test', (req, res) => {
  *         description: List of cars with car_id and car_type only
  */
 app.get('/api/car-details', async (req, res) => {
+  console.log('🚗 /api/car-details route hit at:', new Date().toISOString());
   try {
     // Check if database is connected
     if (!sql.ConnectionPool || !sql.ConnectionPool.prototype.connected) {
