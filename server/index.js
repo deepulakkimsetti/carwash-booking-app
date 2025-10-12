@@ -356,9 +356,10 @@ const dbConfig = {
   }
 };
 
-// Optimized Azure SQL connection for free tier
+// Non-blocking Azure SQL connection for startup stability
 const connectWithRetry = async () => {
   try {
+    console.log('🔄 Attempting to connect to Azure SQL Database...');
     const pool = await sql.connect(dbConfig);
     if (pool.connected) {
       console.log('✅ Connected to Azure SQL Database');
@@ -371,13 +372,20 @@ const connectWithRetry = async () => {
     }
     return pool;
   } catch (err) {
-    console.error('❌ Database connection failed:', err);
-    // Retry after 5 seconds on free tier
-    setTimeout(connectWithRetry, 5000);
+    console.error('❌ Database connection failed:', err.message);
+    console.log('⏰ Will retry database connection in 5 seconds...');
+    // Non-blocking retry - don't prevent app startup
+    setTimeout(() => {
+      connectWithRetry().catch(e => console.error('Retry failed:', e.message));
+    }, 5000);
   }
 };
 
-connectWithRetry();
+// Start database connection attempt (non-blocking)
+connectWithRetry().catch(err => {
+  console.error('Initial database connection attempt failed:', err.message);
+  console.log('🚀 Server will start anyway, database retries continue in background');
+});
 
 // Table schemas
 const tableSchemas = {
@@ -816,7 +824,24 @@ Object.keys(tableSchemas).forEach(table => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+
+// Add global error handlers to prevent crashes
+process.on('uncaughtException', (err) => {
+  console.error('🚨 Uncaught Exception:', err.message);
+  console.error(err.stack);
+  // Don't exit in production, just log the error
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 Unhandled Rejection at:', promise);
+  console.error('🚨 Reason:', reason);
+  // Don't exit in production, just log the error
+});
+
+const server = app.listen(PORT, () => {
   const isProduction = process.env.NODE_ENV === 'production';
   const baseUrl = isProduction 
     ? `https://${process.env.WEBSITE_HOSTNAME || 'carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'}` 
@@ -837,5 +862,13 @@ app.listen(PORT, () => {
     console.log('🔧 Azure Environment Variables:');
     console.log(`   WEBSITE_HOSTNAME: ${process.env.WEBSITE_HOSTNAME || 'NOT SET'}`);
     console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'NOT SET'}`);
+    console.log(`   PORT: ${PORT}`);
+  }
+});
+
+server.on('error', (err) => {
+  console.error('🚨 Server Error:', err.message);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
   }
 });
