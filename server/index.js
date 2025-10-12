@@ -5,12 +5,26 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const path = require('path');
 
 const app = express();
-app.use(express.json());
 
-// Serve static files
-app.use('/public', express.static('public'));
+// Optimizations for Azure Free Tier
+app.use(express.json({ limit: '1mb' })); // Limit payload size
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// Swagger setup
+// Basic security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
+
+// Serve static files with caching for efficiency
+app.use('/public', express.static('public', {
+  maxAge: '1d', // Cache static files for 1 day
+  etag: false   // Disable ETags to save CPU
+}));
+
+// Swagger setup - Fixed for Azure
 const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
@@ -22,32 +36,84 @@ const swaggerOptions = {
     servers: [
       {
         url: process.env.NODE_ENV === 'production' 
-          ? `https://${process.env.WEBSITE_HOSTNAME}` 
+          ? `https://${process.env.WEBSITE_HOSTNAME || 'carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'}` 
           : 'http://localhost:3001',
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ],
   },
-  apis: [__filename]
+  apis: [
+    __filename,
+    './index.js',
+    path.join(__dirname, 'index.js')
+  ]
 };
 
-// Generate Swagger specification
+// Generate Swagger specification with enhanced debugging
 let swaggerSpec;
+console.log('🔧 Generating Swagger specification...');
+console.log('📁 Current directory:', __dirname);
+console.log('📄 Current filename:', __filename);
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+
 try {
   swaggerSpec = swaggerJsdoc(swaggerOptions);
-  console.log('✅ Swagger spec generated with', Object.keys(swaggerSpec.paths || {}).length, 'paths');
+  const pathCount = Object.keys(swaggerSpec.paths || {}).length;
+  console.log('✅ Swagger spec generated with', pathCount, 'paths');
+  
+  if (pathCount === 0) {
+    console.log('⚠️ Warning: No API paths found in Swagger spec');
+    console.log('🔍 Available paths should include:', Object.keys(swaggerSpec.paths || {}));
+  }
 } catch (error) {
   console.error('❌ Error generating Swagger spec:', error);
   swaggerSpec = {
     openapi: '3.0.0',
-    info: { title: 'CarWash API', version: '1.0.0' },
+    info: { title: 'CarWash API', version: '1.0.0', description: 'Fallback spec' },
+    servers: [{
+      url: process.env.NODE_ENV === 'production' 
+        ? `https://${process.env.WEBSITE_HOSTNAME || 'carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'}` 
+        : 'http://localhost:3001'
+    }],
     paths: {}
   };
 }
 
-// Swagger UI routes
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/swagger.json', (req, res) => res.json(swaggerSpec));
+// Enhanced Swagger UI routes with error handling
+console.log('🔧 Setting up Swagger UI...');
+
+// Primary Swagger UI route
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'CarWash API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+  }
+}));
+
+// Swagger JSON endpoint with dynamic server URL
+app.get('/swagger.json', (req, res) => {
+  try {
+    // Ensure the server URL matches the current request
+    const dynamicSpec = {
+      ...swaggerSpec,
+      servers: [{
+        url: `${req.protocol}://${req.get('host')}`,
+        description: 'Current server'
+      }]
+    };
+    res.json(dynamicSpec);
+  } catch (error) {
+    console.error('❌ Error serving swagger.json:', error);
+    res.status(500).json({ error: 'Failed to generate Swagger JSON' });
+  }
+});
+
+// Alternative documentation routes for debugging
+app.get('/docs', (req, res) => res.redirect('/api-docs'));
+app.get('/documentation', (req, res) => res.redirect('/api-docs'));
 
 // Azure SQL config
 const dbConfig = {
@@ -61,14 +127,28 @@ const dbConfig = {
   }
 };
 
-// Connect to Azure SQL
-sql.connect(dbConfig).then(pool => {
-  if (pool.connected) {
-    console.log('Connected to Azure SQL Database');
+// Optimized Azure SQL connection for free tier
+const connectWithRetry = async () => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    if (pool.connected) {
+      console.log('✅ Connected to Azure SQL Database');
+      // Set connection pool settings for free tier
+      pool.config.pool = {
+        max: 5,  // Reduced from default 10
+        min: 1,  // Keep minimum connections
+        idleTimeoutMillis: 30000 // 30 seconds timeout
+      };
+    }
+    return pool;
+  } catch (err) {
+    console.error('❌ Database connection failed:', err);
+    // Retry after 5 seconds on free tier
+    setTimeout(connectWithRetry, 5000);
   }
-}).catch(err => {
-  console.error('Database connection failed:', err);
-});
+};
+
+connectWithRetry();
 
 // Table schemas
 const tableSchemas = {
@@ -111,8 +191,117 @@ app.get('/', (req, res) => {
     status: 'success',
     message: 'CarWash Booking API is running!',
     timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    host: req.get('host'),
+    protocol: req.protocol,
+    url: `${req.protocol}://${req.get('host')}`,
     documentation: '/api-docs',
-    swaggerJson: '/swagger.json'
+    swaggerJson: '/swagger.json',
+    debugInfo: '/debug',
+    swaggerPaths: Object.keys(swaggerSpec?.paths || {}).length
+  });
+});
+
+/**
+ * @swagger
+ * /debug:
+ *   get:
+ *     summary: Debug information endpoint
+ *     tags: [Debug]
+ *     responses:
+ *       200:
+ *         description: Debug information
+ */
+app.get('/debug', (req, res) => {
+  res.json({
+    server: {
+      environment: process.env.NODE_ENV || 'development',
+      host: req.get('host'),
+      protocol: req.protocol,
+      url: `${req.protocol}://${req.get('host')}`,
+      websiteHostname: process.env.WEBSITE_HOSTNAME,
+      currentDirectory: __dirname,
+      currentFilename: __filename
+    },
+    azure: {
+      accountType: 'Azure Student Free Account',
+      tier: 'F1 Free',
+      limitations: {
+        cpuTime: '60 minutes/day',
+        memory: '165 MB',
+        storage: '1 GB',
+        customDomains: false,
+        alwaysOn: false
+      },
+      optimizations: [
+        'Connection pooling enabled',
+        'Static file caching enabled',
+        'Payload size limited to 1MB',
+        'Basic security headers added'
+      ]
+    },
+    swagger: {
+      specExists: !!swaggerSpec,
+      pathsCount: Object.keys(swaggerSpec?.paths || {}).length,
+      availablePaths: Object.keys(swaggerSpec?.paths || {}),
+      servers: swaggerSpec?.servers || [],
+      info: swaggerSpec?.info || {}
+    },
+    routes: {
+      documentation: '/api-docs',
+      swaggerJson: '/swagger.json',
+      health: '/',
+      test: '/test',
+      studentInfo: '/student-account-info'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * @swagger
+ * /student-account-info:
+ *   get:
+ *     summary: Azure Student Account Information
+ *     tags: [Azure Student]
+ *     responses:
+ *       200:
+ *         description: Student account usage and limits
+ */
+app.get('/student-account-info', (req, res) => {
+  res.json({
+    accountType: 'Azure Student Free Account',
+    benefits: {
+      credit: '$100 USD for 12 months',
+      appService: 'Free F1 tier included',
+      sqlDatabase: '250GB free',
+      storage: '5GB LRS hot block blob',
+      bandwidth: '15GB outbound data transfer'
+    },
+    currentUsage: {
+      appService: 'F1 Free (FREE)',
+      sqlDatabase: 'Basic tier (FREE within 250GB)',
+      estimatedMonthlyCost: '$0.00'
+    },
+    limitations: {
+      regions: 'Limited to specific regions',
+      performance: 'Shared resources, limited CPU time',
+      customDomains: 'Not available on free tier',
+      ssl: 'Only *.azurewebsites.net SSL included'
+    },
+    recommendations: [
+      'Monitor CPU usage to stay within 60 min/day limit',
+      'Use connection pooling for database efficiency',
+      'Cache static files to reduce bandwidth',
+      'Consider upgrading to B1 Basic if you need more resources'
+    ],
+    upgradeOptions: {
+      basicB1: {
+        cost: '~$13/month',
+        benefits: ['Custom domains', 'SSL certificates', 'More CPU time', 'More memory']
+      }
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -360,6 +549,25 @@ Object.keys(tableSchemas).forEach(table => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📚 Swagger Documentation: ${process.env.NODE_ENV === 'production' ? `https://${process.env.WEBSITE_HOSTNAME}` : `http://localhost:${PORT}`}/api-docs`);
+  const isProduction = process.env.NODE_ENV === 'production';
+  const baseUrl = isProduction 
+    ? `https://${process.env.WEBSITE_HOSTNAME || 'carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'}` 
+    : `http://localhost:${PORT}`;
+  
+  console.log('🚀 CarWash Booking API Server Started');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🚀 Server: ${baseUrl}`);
+  console.log(`📚 Swagger Documentation: ${baseUrl}/api-docs`);
+  console.log(`📄 Swagger JSON: ${baseUrl}/swagger.json`);
+  console.log(`🔍 Debug Info: ${baseUrl}/debug`);
+  console.log(`❤️  Health Check: ${baseUrl}/`);
+  console.log(`📊 API Paths: ${Object.keys(swaggerSpec?.paths || {}).length}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
+  if (isProduction) {
+    console.log('🔧 Azure Environment Variables:');
+    console.log(`   WEBSITE_HOSTNAME: ${process.env.WEBSITE_HOSTNAME || 'NOT SET'}`);
+    console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'NOT SET'}`);
+  }
 });
