@@ -261,28 +261,66 @@ app.get('/api-docs', (req, res) => {
 <html>
 <head>
   <title>CarWash API Documentation</title>
-  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css" />
   <style>
-    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
-    *, *:before, *:after { box-sizing: inherit; }
-    body { margin:0; background: #fafafa; }
+    html { 
+      box-sizing: border-box; 
+      overflow: -moz-scrollbars-vertical; 
+      overflow-y: scroll; 
+    }
+    *, *:before, *:after { 
+      box-sizing: inherit; 
+    }
+    body { 
+      margin: 0; 
+      background: #fafafa; 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .swagger-ui .topbar { 
+      display: none; 
+    }
+    .swagger-ui .info { 
+      margin: 50px 0; 
+    }
   </style>
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
   <script>
     window.onload = function() {
-      const ui = SwaggerUIBundle({
-        spec: ${JSON.stringify(simpleSwaggerSpec)},
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        presets: [
-          SwaggerUIBundle.presets.apis,
-          SwaggerUIBundle.presets.standalone
-        ],
-        layout: "StandaloneLayout"
-      });
+      try {
+        const ui = SwaggerUIBundle({
+          spec: ${JSON.stringify(simpleSwaggerSpec)},
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [
+            SwaggerUIBundle.presets.apis,
+            SwaggerUIBundle.presets.standalone
+          ],
+          plugins: [
+            SwaggerUIBundle.plugins.DownloadUrl
+          ],
+          // Remove layout specification - let Swagger UI use default
+          defaultModelsExpandDepth: 1,
+          defaultModelExpandDepth: 1,
+          docExpansion: "list",
+          filter: true,
+          showExtensions: true,
+          showCommonExtensions: true,
+          tryItOutEnabled: true
+        });
+        
+        console.log('✅ Swagger UI loaded successfully');
+      } catch (error) {
+        console.error('❌ Error loading Swagger UI:', error);
+        document.getElementById('swagger-ui').innerHTML = 
+          '<div style="padding: 20px; text-align: center;">' +
+          '<h1>CarWash API Documentation</h1>' +
+          '<p style="color: red;">Error loading Swagger UI: ' + error.message + '</p>' +
+          '<p><a href="/swagger.json">View Raw API Specification</a></p>' +
+          '</div>';
+      }
     };
   </script>
 </body>
@@ -538,10 +576,31 @@ app.get('/test', (req, res) => {
  */
 app.get('/api/car-details', async (req, res) => {
   try {
+    // Check if database is connected
+    if (!sql.ConnectionPool || !sql.ConnectionPool.prototype.connected) {
+      return res.status(503).json({ 
+        error: 'Database connection unavailable',
+        message: 'Please check database configuration and firewall rules',
+        sampleData: [
+          { car_id: 1, car_type: 'Sedan' },
+          { car_id: 2, car_type: 'SUV' },
+          { car_id: 3, car_type: 'Hatchback' }
+        ]
+      });
+    }
+    
     const result = await sql.query('SELECT car_id, car_type FROM Car');
     res.json(result.recordset);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(503).json({ 
+      error: 'Database error',
+      message: err.message,
+      tip: 'Add your IP (106.222.232.56) to Azure SQL firewall rules',
+      sampleData: [
+        { car_id: 1, car_type: 'Sedan' },
+        { car_id: 2, car_type: 'SUV' }
+      ]
+    });
   }
 });
 
@@ -593,13 +652,30 @@ Object.keys(tableSchemas).forEach(table => {
    *     responses:
    *       200:
    *         description: List of records
+   *       503:
+   *         description: Database connection unavailable
    */
   app.get(`/api/${table}`, async (req, res) => {
     try {
+      // Check if database is connected
+      if (!sql.ConnectionPool || !sql.ConnectionPool.prototype.connected) {
+        return res.status(503).json({ 
+          error: 'Database connection unavailable',
+          message: 'Please check database configuration and firewall rules',
+          table: table,
+          sampleData: `This would return ${table} data when database is connected`
+        });
+      }
+      
       const result = await sql.query(`SELECT * FROM ${table}`);
       res.json(result.recordset);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res.status(503).json({ 
+        error: 'Database error',
+        message: err.message,
+        table: table,
+        tip: 'Check Azure SQL firewall rules if connection is denied'
+      });
     }
   });
 
