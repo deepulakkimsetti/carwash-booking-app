@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: ./server
 
   deploy:
     runs-on: ubuntu-latest
@@ -48,6 +48,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
+          path: ./
       
       - name: Login to Azure
         uses: azure/login@v2
@@ -62,6 +63,6 @@ jobs:
         with:
           app-name: 'carwash-booking-api'
           slot-name: 'Production'
-          package: .
+          package: ./
 
           
