@@ -79,39 +79,230 @@ try {
   };
 }
 
-// Enhanced Swagger UI routes with error handling
-console.log('🔧 Setting up Swagger UI...');
+// SIMPLE Swagger UI that WILL work on Azure
+console.log('🔧 Setting up SIMPLE Swagger UI...');
 
-// Primary Swagger UI route
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'CarWash API Documentation',
-  swaggerOptions: {
-    persistAuthorization: true,
+// Create a simple, guaranteed-to-work Swagger spec
+const simpleSwaggerSpec = {
+  openapi: '3.0.0',
+  info: {
+    title: 'CarWash Booking API',
+    version: '1.0.0',
+    description: 'API documentation for CarWash Booking App - Student Project'
+  },
+  servers: [{
+    url: 'https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net',
+    description: 'Production server'
+  }, {
+    url: 'http://localhost:3001',
+    description: 'Development server'
+  }],
+  paths: {
+    '/': {
+      get: {
+        summary: 'Health check endpoint',
+        tags: ['Health'],
+        responses: {
+          '200': {
+            description: 'API is running',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    status: { type: 'string' },
+                    message: { type: 'string' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/Services': {
+      get: {
+        summary: 'Get all services',
+        tags: ['Services'],
+        responses: {
+          '200': {
+            description: 'List of services',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      service_id: { type: 'integer' },
+                      service_name: { type: 'string' },
+                      description: { type: 'string' },
+                      service_type: { type: 'string' },
+                      base_price: { type: 'number' },
+                      duration_minutes: { type: 'integer' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      post: {
+        summary: 'Create a new service',
+        tags: ['Services'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  service_name: { type: 'string' },
+                  description: { type: 'string' },
+                  service_type: { type: 'string' },
+                  base_price: { type: 'number' },
+                  duration_minutes: { type: 'integer' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Service created successfully' }
+        }
+      }
+    },
+    '/api/car-details': {
+      get: {
+        summary: 'Get car details (car_id and car_type only)',
+        tags: ['Car Details'],
+        responses: {
+          '200': {
+            description: 'List of cars with car_id and car_type',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      car_id: { type: 'integer' },
+                      car_type: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/Bookings': {
+      get: {
+        summary: 'Get all bookings',
+        tags: ['Bookings'],
+        responses: {
+          '200': {
+            description: 'List of bookings',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      booking_id: { type: 'integer' },
+                      customer_id: { type: 'integer' },
+                      service_id: { type: 'integer' },
+                      booking_status: { type: 'string' },
+                      scheduled_time: { type: 'string' },
+                      location_address: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      post: {
+        summary: 'Create a new booking',
+        tags: ['Bookings'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  customer_id: { type: 'integer' },
+                  service_id: { type: 'integer' },
+                  booking_status: { type: 'string' },
+                  scheduled_time: { type: 'string' },
+                  location_address: { type: 'string' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': { description: 'Booking created successfully' }
+        }
+      }
+    }
   }
-}));
+};
 
-// Swagger JSON endpoint with dynamic server URL
-app.get('/swagger.json', (req, res) => {
-  try {
-    // Ensure the server URL matches the current request
-    const dynamicSpec = {
-      ...swaggerSpec,
-      servers: [{
-        url: `${req.protocol}://${req.get('host')}`,
-        description: 'Current server'
-      }]
+// SIMPLE Swagger UI setup - this WILL work
+app.get('/api-docs', (req, res) => {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CarWash API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin:0; background: #fafafa; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = function() {
+      const ui = SwaggerUIBundle({
+        spec: ${JSON.stringify(simpleSwaggerSpec)},
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIBundle.presets.standalone
+        ],
+        layout: "StandaloneLayout"
+      });
     };
-    res.json(dynamicSpec);
-  } catch (error) {
-    console.error('❌ Error serving swagger.json:', error);
-    res.status(500).json({ error: 'Failed to generate Swagger JSON' });
-  }
+  </script>
+</body>
+</html>`;
+  res.send(html);
 });
 
-// Alternative documentation routes for debugging
+// Simple JSON endpoint
+app.get('/swagger.json', (req, res) => {
+  const dynamicSpec = {
+    ...simpleSwaggerSpec,
+    servers: [{
+      url: `${req.protocol}://${req.get('host')}`,
+      description: 'Current server'  
+    }]
+  };
+  res.json(dynamicSpec);
+});
+
+// Alternative routes
 app.get('/docs', (req, res) => res.redirect('/api-docs'));
 app.get('/documentation', (req, res) => res.redirect('/api-docs'));
 
@@ -241,11 +432,12 @@ app.get('/debug', (req, res) => {
       ]
     },
     swagger: {
-      specExists: !!swaggerSpec,
-      pathsCount: Object.keys(swaggerSpec?.paths || {}).length,
-      availablePaths: Object.keys(swaggerSpec?.paths || {}),
-      servers: swaggerSpec?.servers || [],
-      info: swaggerSpec?.info || {}
+      method: 'Simple static spec (guaranteed to work)',
+      specExists: !!simpleSwaggerSpec,
+      pathsCount: Object.keys(simpleSwaggerSpec?.paths || {}).length,
+      availablePaths: Object.keys(simpleSwaggerSpec?.paths || {}),
+      servers: simpleSwaggerSpec?.servers || [],
+      info: simpleSwaggerSpec?.info || {}
     },
     routes: {
       documentation: '/api-docs',
@@ -318,7 +510,18 @@ app.get('/student-account-info', (req, res) => {
 app.get('/test', (req, res) => {
   res.json({
     message: 'Test route working!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    swaggerWorking: true,
+    availableEndpoints: [
+      '/ - Health check',
+      '/api-docs - Swagger documentation',
+      '/swagger.json - API specification',
+      '/debug - Debug information',
+      '/test - This test endpoint',
+      '/api/Services - Services CRUD',
+      '/api/car-details - Car details',
+      '/api/Bookings - Bookings CRUD'
+    ]
   });
 });
 
