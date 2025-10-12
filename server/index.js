@@ -382,7 +382,7 @@ connectWithRetry();
 // Table schemas
 const tableSchemas = {
   Bookings: ['booking_id','customer_id','service_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
-  Car: ['car_id','car_type','customer_id','make','model','year','license_plate','color','created_at','updated_at'],
+  Cars: ['car_id','car_type','customer_id','make','model','year','license_plate','color','created_at','updated_at'],
   database_firewall_rules: ['id','name','start_ip_address','end_ip_address','create_date','modify_date'],
   Notifications: ['notification_id','user_id','message','type','is_read','created_at'],
   Payments: ['payment_id','booking_id','amount','payment_method','payment_status','transaction_date'],
@@ -395,7 +395,7 @@ const tableSchemas = {
 // Primary keys
 const tablePKs = {
   Bookings: 'booking_id',
-  Car: 'car_id',
+  Cars: 'car_id',
   database_firewall_rules: 'id',
   Notifications: 'notification_id',
   Payments: 'payment_id',
@@ -586,20 +586,9 @@ app.get('/api/test-route', (req, res) => {
 app.get('/api/car-details', async (req, res) => {
   console.log('🚗 /api/car-details route hit at:', new Date().toISOString());
   try {
-    // Check if database is connected
-    if (!sql.ConnectionPool || !sql.ConnectionPool.prototype.connected) {
-      return res.status(503).json({ 
-        error: 'Database connection unavailable',
-        message: 'Please check database configuration and firewall rules',
-        sampleData: [
-          { car_id: 1, car_type: 'Sedan' },
-          { car_id: 2, car_type: 'SUV' },
-          { car_id: 3, car_type: 'Hatchback' }
-        ]
-      });
-    }
-    
-    const result = await sql.query('SELECT car_id, car_type FROM Car');
+    // Query the Cars table (confirmed table name)
+    const result = await sql.query('SELECT id, type FROM Cars');
+    console.log('✅ Query successful, returning', result.recordset.length, 'records');
     res.json(result.recordset);
   } catch (err) {
     res.status(503).json({ 
@@ -636,7 +625,7 @@ app.get('/api/car-details/:car_id', async (req, res) => {
   try {
     const request = new sql.Request();
     request.input('car_id', sql.Int, req.params.car_id);
-    const result = await request.query('SELECT car_id, car_type FROM Car WHERE car_id = @car_id');
+    const result = await request.query('SELECT id, type FROM Cars WHERE id = @car_id');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Car not found' });
@@ -667,16 +656,6 @@ Object.keys(tableSchemas).forEach(table => {
    */
   app.get(`/api/${table}`, async (req, res) => {
     try {
-      // Check if database is connected
-      if (!sql.ConnectionPool || !sql.ConnectionPool.prototype.connected) {
-        return res.status(503).json({ 
-          error: 'Database connection unavailable',
-          message: 'Please check database configuration and firewall rules',
-          table: table,
-          sampleData: `This would return ${table} data when database is connected`
-        });
-      }
-      
       const result = await sql.query(`SELECT * FROM ${table}`);
       res.json(result.recordset);
     } catch (err) {
