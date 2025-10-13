@@ -56,8 +56,8 @@ const locationOptions = {
 };
 
 interface CarType {
-  car_id: string;
-  car_type: string;
+  id: string;
+  type: string;
 }
 
 const ServiceBooking: React.FC = () => {
@@ -87,20 +87,20 @@ const ServiceBooking: React.FC = () => {
           console.error('Failed to fetch car types');
           // Fallback to hardcoded values if API fails
           setCarTypes([
-            { car_id: 'mini', car_type: 'Mini' },
-            { car_id: 'hatchback', car_type: 'Hatchback' },
-            { car_id: 'sedan', car_type: 'Sedan' },
-            { car_id: 'mpv', car_type: 'MPV' },
+            { id: 'mini', type: 'Mini' },
+            { id: 'hatchback', type: 'Hatchback' },
+            { id: 'sedan', type: 'Sedan' },
+            { id: 'mpv', type: 'MPV' },
           ]);
         }
       } catch (error) {
         console.error('Error fetching car types:', error);
         // Fallback to hardcoded values if API fails
         setCarTypes([
-          { car_id: 'mini', car_type: 'Mini' },
-          { car_id: 'hatchback', car_type: 'Hatchback' },
-          { car_id: 'sedan', car_type: 'Sedan' },
-          { car_id: 'mpv', car_type: 'MPV' },
+          { id: 'mini', type: 'Mini' },
+          { id: 'hatchback', type: 'Hatchback' },
+          { id: 'sedan', type: 'Sedan' },
+          { id: 'mpv', type: 'MPV' },
         ]);
       } finally {
         setLoadingCarTypes(false);
@@ -256,8 +256,8 @@ const ServiceBooking: React.FC = () => {
                 >
                   <option value="">{loadingCarTypes ? 'Loading...' : 'Select Car Type'}</option>
                   {carTypes.map((car) => (
-                    <option key={car.car_id} value={car.car_id}>
-                      {car.car_type}
+                    <option key={car.id} value={car.id}>
+                      {car.type}
                     </option>
                   ))}
                 </select>

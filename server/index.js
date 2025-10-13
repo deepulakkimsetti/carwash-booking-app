@@ -2,6 +2,7 @@ const express = require('express');
 const sql = require('mssql');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
 
@@ -16,6 +17,12 @@ app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   next();
 });
+
+// CORS support
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'],
+  credentials: true,
+}));
 
 // Serve static files with caching for efficiency
 app.use('/public', express.static('public', {
