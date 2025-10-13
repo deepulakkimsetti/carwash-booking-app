@@ -20,7 +20,7 @@ app.use((req, res, next) => {
 
 // CORS support
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'],
+  origin: ['http://localhost:5173', 'https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net', 'https://yellow-mud-03e0dd900.2.azurestaticapps.net'],
   credentials: true,
 }));
 
