@@ -79,12 +79,37 @@ const ServiceBooking: React.FC = () => {
     const fetchCarTypes = async () => {
       setLoadingCarTypes(true);
       try {
-        const response = await fetch('/api/car-details');
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/car-details', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
         if (response.ok) {
-          const data = await response.json();
-          setCarTypes(data);
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            console.log('API Response:', data);
+            setCarTypes(data);
+          } else {
+            const text = await response.text();
+            console.error('API returned non-JSON response:', text.substring(0, 200));
+            // Fallback to hardcoded values if API fails
+            setCarTypes([
+              { id: 'mini', type: 'Mini' },
+              { id: 'hatchback', type: 'Hatchback' },
+              { id: 'sedan', type: 'Sedan' },
+              { id: 'mpv', type: 'MPV' },
+            ]);
+          }
         } else {
-          console.error('Failed to fetch car types');
+          console.error('Failed to fetch car types, status:', response.status);
+          const text = await response.text();
+          console.error('Error response:', text.substring(0, 200));
           // Fallback to hardcoded values if API fails
           setCarTypes([
             { id: 'mini', type: 'Mini' },
