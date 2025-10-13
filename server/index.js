@@ -1,7 +1,6 @@
 const express = require('express');
 const sql = require('mssql');
 const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 const path = require('path');
 
 const app = express();
@@ -24,71 +23,24 @@ app.use('/public', express.static('public', {
   etag: false   // Disable ETags to save CPU
 }));
 
-// Swagger setup - Fixed for Azure
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'CarWash Booking API',
-      version: '1.0.0',
-      description: 'API documentation for CarWash Booking App',
-    },
-    servers: [
-      {
-        url: process.env.NODE_ENV === 'production' 
-          ? `https://${process.env.WEBSITE_HOSTNAME || 'carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'}` 
-          : 'http://localhost:3001',
-        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
-      }
-    ],
-  },
-  apis: [
-    __filename,
-    './index.js',
-    path.join(__dirname, 'index.js')
-  ]
-};
+// Professional Swagger documentation setup - using hardcoded specification for better control
+console.log('🔧 Setting up professional Swagger UI with standards-compliant documentation...');
 
-// Generate Swagger specification with enhanced debugging
-let swaggerSpec;
-console.log('🔧 Generating Swagger specification...');
-console.log('📁 Current directory:', __dirname);
-console.log('📄 Current filename:', __filename);
-console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
-
-try {
-  swaggerSpec = swaggerJsdoc(swaggerOptions);
-  const pathCount = Object.keys(swaggerSpec.paths || {}).length;
-  console.log('✅ Swagger spec generated with', pathCount, 'paths');
-  
-  if (pathCount === 0) {
-    console.log('⚠️ Warning: No API paths found in Swagger spec');
-    console.log('🔍 Available paths should include:', Object.keys(swaggerSpec.paths || {}));
-  }
-} catch (error) {
-  console.error('❌ Error generating Swagger spec:', error);
-  swaggerSpec = {
-    openapi: '3.0.0',
-    info: { title: 'CarWash API', version: '1.0.0', description: 'Fallback spec' },
-    servers: [{
-      url: process.env.NODE_ENV === 'production' 
-        ? `https://${process.env.WEBSITE_HOSTNAME || 'carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net'}` 
-        : 'http://localhost:3001'
-    }],
-    paths: {}
-  };
-}
-
-// SIMPLE Swagger UI that WILL work on Azure
-console.log('🔧 Setting up SIMPLE Swagger UI...');
-
-// Create a simple, guaranteed-to-work Swagger spec
+// Create a professional, standards-compliant Swagger spec
 const simpleSwaggerSpec = {
   openapi: '3.0.0',
   info: {
     title: 'CarWash Booking API',
     version: '1.0.0',
-    description: 'API documentation for CarWash Booking App - Student Project'
+    description: 'Professional API documentation for CarWash Booking System - Comprehensive car wash service management platform',
+    contact: {
+      name: 'API Support',
+      email: 'support@carwash-booking.com'
+    },
+    license: {
+      name: 'MIT',
+      url: 'https://opensource.org/licenses/MIT'
+    }
   },
   servers: [{
     url: 'https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net',
@@ -97,157 +49,432 @@ const simpleSwaggerSpec = {
     url: 'http://localhost:3001',
     description: 'Development server'
   }],
-  paths: {
-    '/': {
-      get: {
-        summary: 'Health check endpoint',
-        tags: ['Health'],
-        responses: {
-          '200': {
-            description: 'API is running',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    status: { type: 'string' },
-                    message: { type: 'string' }
-                  }
-                }
-              }
-            }
+  components: {
+    schemas: {
+      Error: {
+        type: 'object',
+        required: ['error', 'message'],
+        properties: {
+          error: {
+            type: 'string',
+            description: 'Error type',
+            example: 'ValidationError'
+          },
+          message: {
+            type: 'string',
+            description: 'Human-readable error message',
+            example: 'The provided data is invalid'
+          },
+          details: {
+            type: 'string',
+            description: 'Additional error details',
+            example: 'Missing required field: service_name'
+          }
+        }
+      },
+      Service: {
+        type: 'object',
+        required: ['service_name', 'service_type', 'base_price', 'duration_minutes'],
+        properties: {
+          service_id: {
+            type: 'integer',
+            description: 'Unique service identifier',
+            example: 1
+          },
+          service_name: {
+            type: 'string',
+            description: 'Name of the car wash service',
+            example: 'Premium Wash',
+            minLength: 2,
+            maxLength: 100
+          },
+          description: {
+            type: 'string',
+            description: 'Detailed service description',
+            example: 'Complete exterior and interior cleaning with wax protection',
+            maxLength: 500
+          },
+          service_type: {
+            type: 'string',
+            description: 'Category of service',
+            example: 'Premium',
+            enum: ['Basic', 'Standard', 'Premium', 'Deluxe']
+          },
+          base_price: {
+            type: 'number',
+            format: 'float',
+            description: 'Base price in currency units',
+            example: 29.99,
+            minimum: 0
+          },
+          duration_minutes: {
+            type: 'integer',
+            description: 'Service duration in minutes',
+            example: 45,
+            minimum: 15,
+            maximum: 300
+          }
+        }
+      },
+      Car: {
+        type: 'object',
+        required: ['car_type'],
+        properties: {
+          car_id: {
+            type: 'integer',
+            description: 'Unique car identifier',
+            example: 1
+          },
+          car_type: {
+            type: 'string',
+            description: 'Type/model of the car',
+            example: 'Sedan',
+            minLength: 2,
+            maxLength: 50
+          }
+        }
+      },
+      Booking: {
+        type: 'object',
+        required: ['customer_id', 'service_id', 'scheduled_time', 'location_address'],
+        properties: {
+          booking_id: {
+            type: 'integer',
+            description: 'Unique booking identifier',
+            example: 1
+          },
+          customer_id: {
+            type: 'integer',
+            description: 'Customer identifier',
+            example: 123,
+            minimum: 1
+          },
+          service_id: {
+            type: 'integer',
+            description: 'Service identifier',
+            example: 1,
+            minimum: 1
+          },
+          booking_status: {
+            type: 'string',
+            description: 'Current booking status',
+            example: 'confirmed',
+            enum: ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'],
+            default: 'pending'
+          },
+          scheduled_time: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Scheduled service time (ISO 8601 format)',
+            example: '2025-10-15T14:30:00Z'
+          },
+          location_address: {
+            type: 'string',
+            description: 'Service location address',
+            example: '123 Main Street, City, State 12345',
+            minLength: 10,
+            maxLength: 200
+          }
+        }
+      },
+      HealthCheck: {
+        type: 'object',
+        properties: {
+          status: {
+            type: 'string',
+            example: 'success'
+          },
+          message: {
+            type: 'string',
+            example: 'CarWash Booking API is running!'
+          },
+          timestamp: {
+            type: 'string',
+            format: 'date-time',
+            example: '2025-10-13T10:30:00Z'
+          },
+          environment: {
+            type: 'string',
+            example: 'production'
           }
         }
       }
     },
-    '/api/Services': {
+    responses: {
+      BadRequest: {
+        description: 'Bad Request - Invalid input data',
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/Error'
+            },
+            example: {
+              error: 'ValidationError',
+              message: 'Invalid input data provided',
+              details: 'Missing required field: service_name'
+            }
+          }
+        }
+      },
+      NotFound: {
+        description: 'Resource not found',
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/Error'
+            },
+            example: {
+              error: 'NotFoundError',
+              message: 'The requested resource was not found',
+              details: 'No service found with ID: 999'
+            }
+          }
+        }
+      },
+      InternalServerError: {
+        description: 'Internal Server Error',
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/Error'
+            },
+            example: {
+              error: 'InternalServerError',
+              message: 'An unexpected error occurred',
+              details: 'Database connection failed'
+            }
+          }
+        }
+      }
+    }
+  },
+  paths: {
+    '/': {
+      get: {
+        summary: 'Health check endpoint',
+        description: 'Check if the API server is running and responsive',
+        tags: ['Health'],
+        responses: {
+          '200': {
+            description: 'API is running successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/HealthCheck'
+                }
+              }
+            }
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
+          }
+        }
+      }
+    },
+    '/api/services': {
       get: {
         summary: 'Get all services',
+        description: 'Retrieve a comprehensive list of all available car wash services',
         tags: ['Services'],
         responses: {
           '200': {
-            description: 'List of services',
+            description: 'Successfully retrieved list of services',
             content: {
               'application/json': {
                 schema: {
                   type: 'array',
                   items: {
-                    type: 'object',
-                    properties: {
-                      service_id: { type: 'integer' },
-                      service_name: { type: 'string' },
-                      description: { type: 'string' },
-                      service_type: { type: 'string' },
-                      base_price: { type: 'number' },
-                      duration_minutes: { type: 'integer' }
-                    }
+                    $ref: '#/components/schemas/Service'
                   }
                 }
               }
             }
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
           }
         }
       },
       post: {
         summary: 'Create a new service',
+        description: 'Add a new car wash service to the system',
         tags: ['Services'],
         requestBody: {
           required: true,
+          description: 'Service details to create',
           content: {
             'application/json': {
               schema: {
                 type: 'object',
+                required: ['service_name', 'service_type', 'base_price', 'duration_minutes'],
                 properties: {
-                  service_name: { type: 'string' },
-                  description: { type: 'string' },
-                  service_type: { type: 'string' },
-                  base_price: { type: 'number' },
-                  duration_minutes: { type: 'integer' }
+                  service_name: { 
+                    type: 'string',
+                    description: 'Name of the service',
+                    example: 'Premium Wash'
+                  },
+                  description: { 
+                    type: 'string',
+                    description: 'Service description',
+                    example: 'Complete wash with wax protection'
+                  },
+                  service_type: { 
+                    type: 'string',
+                    description: 'Service category',
+                    example: 'Premium'
+                  },
+                  base_price: { 
+                    type: 'number',
+                    description: 'Price in currency units',
+                    example: 29.99
+                  },
+                  duration_minutes: { 
+                    type: 'integer',
+                    description: 'Duration in minutes',
+                    example: 45
+                  }
                 }
               }
             }
           }
         },
         responses: {
-          '200': { description: 'Service created successfully' }
+          '201': {
+            description: 'Service created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/Service'
+                }
+              }
+            }
+          },
+          '400': {
+            $ref: '#/components/responses/BadRequest'
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
+          }
         }
       }
     },
     '/api/car-details': {
       get: {
-        summary: 'Get car details (car_id and car_type only)',
-        tags: ['Car Details'],
+        summary: 'Get car details',
+        description: 'Retrieve car information including car_id and car_type for all registered vehicles',
+        tags: ['Cars'],
         responses: {
           '200': {
-            description: 'List of cars with car_id and car_type',
+            description: 'Successfully retrieved list of cars',
             content: {
               'application/json': {
                 schema: {
                   type: 'array',
                   items: {
-                    type: 'object',
-                    properties: {
-                      car_id: { type: 'integer' },
-                      car_type: { type: 'string' }
-                    }
+                    $ref: '#/components/schemas/Car'
                   }
                 }
               }
             }
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
           }
         }
       }
     },
-    '/api/Bookings': {
+    '/api/bookings': {
       get: {
         summary: 'Get all bookings',
+        description: 'Retrieve a comprehensive list of all car wash service bookings',
         tags: ['Bookings'],
         responses: {
           '200': {
-            description: 'List of bookings',
+            description: 'Successfully retrieved list of bookings',
             content: {
               'application/json': {
                 schema: {
                   type: 'array',
                   items: {
-                    type: 'object',
-                    properties: {
-                      booking_id: { type: 'integer' },
-                      customer_id: { type: 'integer' },
-                      service_id: { type: 'integer' },
-                      booking_status: { type: 'string' },
-                      scheduled_time: { type: 'string' },
-                      location_address: { type: 'string' }
-                    }
+                    $ref: '#/components/schemas/Booking'
                   }
                 }
               }
             }
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
           }
         }
       },
       post: {
         summary: 'Create a new booking',
+        description: 'Schedule a new car wash service booking',
         tags: ['Bookings'],
         requestBody: {
           required: true,
+          description: 'Booking details to create',
           content: {
             'application/json': {
               schema: {
                 type: 'object',
+                required: ['customer_id', 'service_id', 'scheduled_time', 'location_address'],
                 properties: {
-                  customer_id: { type: 'integer' },
-                  service_id: { type: 'integer' },
-                  booking_status: { type: 'string' },
-                  scheduled_time: { type: 'string' },
-                  location_address: { type: 'string' }
+                  customer_id: { 
+                    type: 'integer',
+                    description: 'Customer identifier',
+                    example: 123,
+                    minimum: 1
+                  },
+                  service_id: { 
+                    type: 'integer',
+                    description: 'Service identifier',
+                    example: 1,
+                    minimum: 1
+                  },
+                  booking_status: { 
+                    type: 'string',
+                    description: 'Initial booking status (optional)',
+                    example: 'pending',
+                    enum: ['pending', 'confirmed'],
+                    default: 'pending'
+                  },
+                  scheduled_time: { 
+                    type: 'string',
+                    format: 'date-time',
+                    description: 'Scheduled service time (ISO 8601 format)',
+                    example: '2025-10-15T14:30:00Z'
+                  },
+                  location_address: { 
+                    type: 'string',
+                    description: 'Service location address',
+                    example: '123 Main Street, City, State 12345'
+                  }
                 }
               }
             }
           }
         },
         responses: {
-          '200': { description: 'Booking created successfully' }
+          '201': {
+            description: 'Booking created successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/Booking'
+                }
+              }
+            }
+          },
+          '400': {
+            $ref: '#/components/responses/BadRequest'
+          },
+          '404': {
+            $ref: '#/components/responses/NotFound'
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
+          }
         }
       }
     }
@@ -413,16 +640,7 @@ const tablePKs = {
   Services: 'service_id'
 };
 
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Health check endpoint
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: API is running
- */
+// Health check endpoint - documented in Swagger spec above
 app.get('/', (req, res) => {
   res.json({
     status: 'success',
@@ -435,7 +653,7 @@ app.get('/', (req, res) => {
     documentation: '/api-docs',
     swaggerJson: '/swagger.json',
     debugInfo: '/debug',
-    swaggerPaths: Object.keys(swaggerSpec?.paths || {}).length
+    swaggerPaths: Object.keys(simpleSwaggerSpec?.paths || {}).length
   });
 });
 
@@ -855,7 +1073,7 @@ const server = app.listen(PORT, () => {
   console.log(`📄 Swagger JSON: ${baseUrl}/swagger.json`);
   console.log(`🔍 Debug Info: ${baseUrl}/debug`);
   console.log(`❤️  Health Check: ${baseUrl}/`);
-  console.log(`📊 API Paths: ${Object.keys(swaggerSpec?.paths || {}).length}`);
+  console.log(`📊 API Paths: ${Object.keys(simpleSwaggerSpec?.paths || {}).length}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
   if (isProduction) {
