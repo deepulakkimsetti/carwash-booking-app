@@ -484,6 +484,174 @@ const simpleSwaggerSpec = {
           }
         }
       }
+    },
+    '/api/getServiceDetails': {
+      get: {
+        summary: 'Get service details by car and product',
+        description: 'Retrieve services filtered by specific car_id and product_id parameters',
+        tags: ['Services'],
+        parameters: [
+          {
+            name: 'car_id',
+            in: 'query',
+            required: true,
+            description: 'Car identifier to filter services',
+            schema: {
+              type: 'integer',
+              minimum: 1,
+              example: 1
+            }
+          },
+          {
+            name: 'product_id',
+            in: 'query',
+            required: true,
+            description: 'Product identifier to filter services',
+            schema: {
+              type: 'integer',
+              minimum: 1,
+              example: 1  
+            }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved service details',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: true
+                    },
+                    count: {
+                      type: 'integer',
+                      description: 'Number of services found',
+                      example: 3
+                    },
+                    filters: {
+                      type: 'object',
+                      properties: {
+                        car_id: {
+                          type: 'integer',
+                          example: 1
+                        },
+                        product_id: {
+                          type: 'integer', 
+                          example: 1
+                        }
+                      }
+                    },
+                    data: {
+                      type: 'array',
+                      items: {
+                        $ref: '#/components/schemas/Service'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            $ref: '#/components/responses/BadRequest'
+          },
+          '500': {
+            $ref: '#/components/responses/InternalServerError'
+          }
+        }
+      }
+    },
+    '/api/product-details': {
+      get: {
+        summary: 'Get all products',
+        description: 'Retrieve a comprehensive list of all available products in the system',
+        tags: ['Products'],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved list of products',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      ProductID: {
+                        type: 'integer',
+                        description: 'Unique product identifier',
+                        example: 1
+                      },
+                      ProductName: {
+                        type: 'string',
+                        description: 'Name of the product',
+                        example: 'Car Wash Premium'
+                      },
+                      Price: {
+                        type: 'number',
+                        format: 'float',
+                        description: 'Product price in currency units',
+                        example: 29.99
+                      },
+                      ProductDescription: {
+                        type: 'string',
+                        description: 'Detailed product description',
+                        example: 'Complete car wash service with premium cleaning products'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '503': {
+            description: 'Database connection error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Database error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Connection failed'
+                    },
+                    tip: {
+                      type: 'string',
+                      example: 'Add your IP to Azure SQL firewall rules'
+                    },
+                    sampleData: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          product_id: {
+                            type: 'integer',
+                            example: 1
+                          },
+                          product_name: {
+                            type: 'string',
+                            example: 'Car Wash'
+                          },
+                          price: {
+                            type: 'number',
+                            example: 10.99
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 };
@@ -838,6 +1006,35 @@ app.get('/api/car-details', async (req, res) => {
 
 /**
  * @swagger
+ * /api/product-details:
+ *  get:
+ *    summary: Get product details
+ *    tags: [Product Details]
+ *    responses:
+ *      200:
+ *        description: Product details
+ *      404:
+ *        description: Product not found  
+ */
+app.get('/api/product-details', async (req, res) => {
+  try {
+    const result = await sql.query('SELECT * FROM Products');
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(503).json({
+      error: 'Database error',
+      message: err.message,
+      tip: 'Add your IP (106.222.232.56) to Azure SQL firewall rules',
+      sampleData: [
+        { product_id: 1, product_name: 'Car Wash', price: 10.99 },
+        { product_id: 2, product_name: 'Interior Cleaning', price: 15.99 }
+      ]
+    });
+  }
+});
+
+/**
+ * @swagger
  * /api/car-details/{car_id}:
  *   get:
  *     summary: Get specific car details by car_id
@@ -867,6 +1064,54 @@ app.get('/api/car-details/:car_id', async (req, res) => {
     res.json(result.recordset[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// API endpoint for getServiceDetails - Services filtered by car_id and product_id
+app.get('/api/getServiceDetails', async (req, res) => {
+  try {
+    const { car_id, product_id } = req.query;
+    
+    // Validate required parameters
+    if (!car_id || !product_id) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters',
+        message: 'Both car_id and product_id are required',
+        example: '/api/getServiceDetails?car_id=1&product_id=1'
+      });
+    }
+
+    // Validate parameters are numbers
+    if (isNaN(car_id) || isNaN(product_id)) {
+      return res.status(400).json({ 
+        error: 'Invalid parameter types',
+        message: 'car_id and product_id must be valid numbers'
+      });
+    }
+
+    const request = new sql.Request();
+    request.input('car_id', sql.Int, parseInt(car_id));
+    request.input('product_id', sql.Int, parseInt(product_id));
+    
+    const result = await request.query(`SELECT * FROM [dbo].[Services] WHERE car_id = @car_id AND product_id = @product_id`);
+    
+    res.json({
+      success: true,
+      count: result.recordset.length,
+      filters: {
+        car_id: parseInt(car_id),
+        product_id: parseInt(product_id)
+      },
+      data: result.recordset
+    });
+    
+  } catch (err) {
+    console.error('Error in /api/getServiceDetails:', err);
+    res.status(500).json({ 
+      error: 'Database error',
+      message: err.message,
+      query: 'SELECT * FROM [dbo].[Services] WHERE car_id = ? AND product_id = ?'
+    });
   }
 });
 
