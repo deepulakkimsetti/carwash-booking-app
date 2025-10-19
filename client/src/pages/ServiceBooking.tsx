@@ -21,6 +21,25 @@ interface ProductService {
   ProductDescription: string;
 }
 
+interface PricingDetail {
+  service_id: number;
+  service_name: string;
+  description: string;
+  service_type: string;
+  base_price: number;
+  duration_minutes: number;
+}
+
+interface PricingResponse {
+  success: boolean;
+  count: number;
+  filters: {
+    car_id: number;
+    product_id: number;
+  };
+  data: PricingDetail[];
+}
+
 // Fallback services data
 const fallbackServices = [
   { title: 'Basic Wash - fallback', description: 'A quick and efficient exterior clean to keep your car looking fresh. Includes high-pressure rinse, foam wash, and spot-free drying — perfect for regular maintenance and a clean drive every time.', price: 301 },
@@ -30,29 +49,29 @@ const fallbackServices = [
 
 const pricingTable: Record<string, Record<string, number>> = {
   Mini: {
-    'Basic Wash': 300,
-    'Premium Wash': 500,
-    'Ultimate Detail': 700,
+    'Basic Wash': 301,
+    'Premium Wash': 501,
+    'Ultimate Detail': 701,
   },
   Hatchback: {
-    'Basic Wash': 500,
-    'Premium Wash': 700,
-    'Ultimate Detail': 900,
+    'Basic Wash': 501,
+    'Premium Wash': 701,
+    'Ultimate Detail': 901,
   },
   Sedan: {
-    'Basic Wash': 700,
-    'Premium Wash': 1000,
-    'Ultimate Detail': 1200,
+    'Basic Wash': 701,
+    'Premium Wash': 1001,
+    'Ultimate Detail': 1201,
   },
   MPV: {
-    'Basic Wash': 800,
-    'Premium Wash': 1100,
-    'Ultimate Detail': 1300,
+    'Basic Wash': 801,
+    'Premium Wash': 1101,
+    'Ultimate Detail': 1301,
   },
   SUV: {
-    'Basic Wash': 700,
-    'Premium Wash': 1000,
-    'Ultimate Detail': 1200,
+    'Basic Wash': 701,
+    'Premium Wash': 1001,
+    'Ultimate Detail': 1201,
   },
 };
 
@@ -60,13 +79,24 @@ const pricingTable: Record<string, Record<string, number>> = {
 const steps = ['Select Service', 'Details', 'Confirm'];
 
 const locationOptions = {
-  Hyderabad: ['HiTech City', 'Madhapur', 'Gachibowli', 'Lingampally', 'Ameenpur', 'Kukatpally', 'Bachupally', 'Miyapur', 'Kondapur', 'Manikonda', 'Narsingi', 'Serilingampally'],
-  Bangalore: ['MG Road', 'Indiranagar', 'Koramangala', 'Whitefield', 'Jayanagar', 'HSR Layout', 'BTM Layout', 'Marathahalli', 'Electronic City', 'Sarjapur Road', 'Yelahanka', 'Hebbal']
+  Hyderabad: ['HiTech City1', 'Madhapur', 'Gachibowli', 'Lingampally', 'Ameenpur', 'Kukatpally', 'Bachupally', 'Miyapur', 'Kondapur', 'Manikonda', 'Narsingi', 'Serilingampally'],
+  Bangalore: ['MG Road1', 'Indiranagar', 'Koramangala', 'Whitefield', 'Jayanagar', 'HSR Layout', 'BTM Layout', 'Marathahalli', 'Electronic City', 'Sarjapur Road', 'Yelahanka', 'Hebbal']
 };
 
 interface CarType {
   id: string;
   type: string;
+}
+
+interface City {
+  CityID: number;
+  CityName: string;
+  StateCode?: string;
+}
+
+interface Location {
+  LocationID: number;
+  LocationName: string;
 }
 
 const ServiceBooking: React.FC = () => {
@@ -79,11 +109,86 @@ const ServiceBooking: React.FC = () => {
   const [loadingCarTypes, setLoadingCarTypes] = useState(false);
   const [services, setServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
+  const [pricingDetails, setPricingDetails] = useState<PricingDetail[]>([]);
+  const [loadingPricing, setLoadingPricing] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [cities, setCities] = useState<City[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
   const [city, setCity] = useState<string>('');
   const [nearestLocation, setNearestLocation] = useState<string>('');
+  const [fullAddress, setFullAddress] = useState<string>('');
   const [openSuccess, setOpenSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Helper function to get the current price for display
+  const getCurrentPrice = () => {
+    if (currentPrice !== null) {
+      return currentPrice;
+    }
+    
+    // Fallback to static pricing table
+    if (carType && selectedService && pricingTable[carType] && pricingTable[carType][selectedService]) {
+      return pricingTable[carType][selectedService];
+    }
+    
+    return null;
+  };
+
+  // Helper function to get additional service details from pricing API
+  const getCurrentServiceDetails = () => {
+    if (pricingDetails.length > 0) {
+      return pricingDetails[0];
+    }
+    return null;
+  };
+
+  // Function to fetch pricing details based on car_id and product_id
+  const fetchPricingDetails = async (carId: number, productId: number) => {
+    setLoadingPricing(true);
+    try {
+      const response = await fetch(
+        `https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getServiceDetails?car_id=${carId}&product_id=${productId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('Pricing API Response status:', response.status);
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data: PricingResponse = await response.json();
+          console.log('Pricing API Response:', data);
+          
+          if (data.success && data.data.length > 0) {
+            setPricingDetails(data.data);
+            setCurrentPrice(data.data[0].base_price);
+          } else {
+            console.warn('No pricing data found for the given parameters');
+            setCurrentPrice(null);
+          }
+        } else {
+          console.error('Pricing API returned non-JSON response');
+          setCurrentPrice(null);
+        }
+      } else {
+        console.error('Failed to fetch pricing details, status:', response.status);
+        setCurrentPrice(null);
+      }
+    } catch (error) {
+      console.error('Error fetching pricing details:', error);
+      setCurrentPrice(null);
+    } finally {
+      setLoadingPricing(false);
+    }
+  };
 
   // Fetch car types from API
   useEffect(() => {
@@ -194,6 +299,147 @@ const ServiceBooking: React.FC = () => {
     fetchServices();
   }, []);
 
+  // Fetch cities from API
+  useEffect(() => {
+    const fetchCities = async () => {
+      setLoadingCities(true);
+      try {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getCities', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Cities API Response status:', response.status);
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data: City[] = await response.json();
+            console.log('Cities API Response:', data);
+            setCities(data);
+          } else {
+            console.error('Cities API returned non-JSON response');
+            // Fallback to hardcoded cities if API fails
+            setCities([
+              { CityID: 1, CityName: 'Hyderabad1', StateCode: 'TG' },
+              { CityID: 2, CityName: 'Bangalore1', StateCode: 'KA' },
+            ]);
+          }
+        } else {
+          console.error('Failed to fetch cities, status:', response.status);
+          // Fallback to hardcoded cities if API fails
+          setCities([
+            { CityID: 1, CityName: 'Hyderabad2', StateCode: 'TG' },
+            { CityID: 2, CityName: 'Bangalore2', StateCode: 'KA' },
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+        // Fallback to hardcoded cities if API fails
+        setCities([
+          { CityID: 1, CityName: 'Hyderabad3', StateCode: 'TG' },
+          { CityID: 2, CityName: 'Bangalore3', StateCode: 'KA' },
+        ]);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+
+    fetchCities();
+  }, []);
+
+  // Fetch locations from API when city changes
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (!city) {
+        setLocations([]);
+        return;
+      }
+
+      // Find the selected city object to get its ID
+      const selectedCity = cities.find(c => c.CityName === city);
+      if (!selectedCity) {
+        console.error('Selected city not found in cities array');
+        return;
+      }
+
+      setLoadingLocations(true);
+      try {
+        const response = await fetch(`https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getLocations?cityId=${selectedCity.CityID}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Locations API Response status:', response.status);
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data: Location[] = await response.json();
+            console.log('Locations API Response:', data);
+            setLocations(data);
+          } else {
+            console.error('Locations API returned non-JSON response');
+            // Fallback to hardcoded locations if API fails
+            const fallbackLocations = locationOptions[city as keyof typeof locationOptions] || [];
+            setLocations(fallbackLocations.map((name, index) => ({
+              LocationID: index + 1,
+              LocationName: name
+            })));
+          }
+        } else {
+          console.error('Failed to fetch locations, status:', response.status);
+          // Fallback to hardcoded locations if API fails
+          const fallbackLocations = locationOptions[city as keyof typeof locationOptions] || [];
+          setLocations(fallbackLocations.map((name, index) => ({
+            LocationID: index + 1,
+            LocationName: name
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+        // Fallback to hardcoded locations if API fails
+        const fallbackLocations = locationOptions[city as keyof typeof locationOptions] || [];
+        setLocations(fallbackLocations.map((name, index) => ({
+          LocationID: index + 1,
+          LocationName: name
+        })));
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+
+    fetchLocations();
+  }, [city, cities]); // Fetch locations whenever city or cities array changes
+
+  // Fetch pricing details when both car type and selected service are available
+  useEffect(() => {
+    if (carType && selectedService) {
+      // Find the car ID based on car type
+      const selectedCarType = carTypes.find(car => car.type === carType);
+      
+      // Find the product ID based on selected service
+      const selectedServiceObj = services.find(service => service.title === selectedService);
+      
+      if (selectedCarType && selectedServiceObj) {
+        // Convert car type to ID (you may need to adjust this mapping based on your API)
+        const carId = typeof selectedCarType.id === 'string' ? parseInt(selectedCarType.id, 10) : selectedCarType.id;
+        const productId = selectedServiceObj.id;
+        
+        console.log('Fetching pricing for car_id:', carId, 'product_id:', productId);
+        fetchPricingDetails(carId, productId);
+      }
+    } else {
+      // Reset pricing when car type or service is not selected
+      setCurrentPrice(null);
+      setPricingDetails([]);
+    }
+  }, [carType, selectedService, carTypes, services]); // Fetch pricing whenever car type or service changes
+
   React.useEffect(() => {
     if (location.state && location.state.loginSuccess) {
       setOpenSuccess(true);
@@ -283,7 +529,13 @@ const ServiceBooking: React.FC = () => {
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                         <Typography variant="subtitle1" fontWeight={700}>
-                          ₹{service.price.toFixed(2)}
+                          {selectedService === service.title && getCurrentPrice() !== null ? 
+                            `₹${getCurrentPrice()?.toFixed(2)}` : 
+                            `₹${service.price.toFixed(2)}`
+                          }
+                          {loadingPricing && selectedService === service.title && (
+                            <CircularProgress size={16} sx={{ ml: 1 }} />
+                          )}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
                           *Starting price. Actual price may vary.
@@ -326,37 +578,8 @@ const ServiceBooking: React.FC = () => {
               </Typography>
             </Box>
             <Box sx={{ width: { xs: '100%', sm: '80%', md: '60%' }, mb: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Car Type Centered */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
-                <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'center' }}>
-                  Car Type
-                </Typography>
-                <select
-                  value={carType}
-                  onChange={e => setCarType(e.target.value)}
-                  disabled={loadingCarTypes}
-                  style={{ 
-                    padding: '10px', 
-                    fontSize: '16px', 
-                    borderRadius: '6px', 
-                    border: '1px solid #ccc', 
-                    width: '220px', 
-                    background: loadingCarTypes ? '#f5f5f5' : '#fff', 
-                    outline: 'none',
-                    cursor: loadingCarTypes ? 'wait' : 'pointer'
-                  }}
-                >
-                  <option value="">{loadingCarTypes ? 'Loading...' : 'Select Car Type'}</option>
-                  {carTypes.map((car) => (
-                    <option key={car.id} value={car.id}>
-                      {car.type}
-                    </option>
-                  ))}
-                </select>
-              </Box>
-              
               {/* City and Nearest Location Side by Side */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, mb: 1 }}>
                 {/* City */}
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
                   <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
@@ -368,11 +591,24 @@ const ServiceBooking: React.FC = () => {
                       setCity(e.target.value);
                       setNearestLocation(''); // Reset nearest location when city changes
                     }}
-                    style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', width: '220px', background: '#fff', outline: 'none' }}
+                    disabled={loadingCities}
+                    style={{ 
+                      padding: '10px', 
+                      fontSize: '16px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #ccc', 
+                      width: '220px', 
+                      background: loadingCities ? '#f5f5f5' : '#fff', 
+                      outline: 'none',
+                      cursor: loadingCities ? 'wait' : 'pointer'
+                    }}
                   >
-                    <option value="">Select City</option>
-                    <option value="Hyderabad">Hyderabad</option>
-                    <option value="Bangalore">Bangalore</option>
+                    <option value="">{loadingCities ? 'Loading...' : 'Select City'}</option>
+                    {cities.map((cityItem) => (
+                      <option key={cityItem.CityID} value={cityItem.CityName}>
+                        {cityItem.CityName}
+                      </option>
+                    ))}
                   </select>
                 </Box>
                 {/* Nearest Location */}
@@ -383,18 +619,31 @@ const ServiceBooking: React.FC = () => {
                   <select
                     value={nearestLocation}
                     onChange={e => setNearestLocation(e.target.value)}
-                    disabled={!city}
-                    style={{ padding: '10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', width: '220px', background: city ? '#fff' : '#f5f5f5', outline: 'none' }}
+                    disabled={!city || loadingLocations}
+                    style={{ 
+                      padding: '10px', 
+                      fontSize: '16px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #ccc', 
+                      width: '220px', 
+                      background: (!city || loadingLocations) ? '#f5f5f5' : '#fff', 
+                      outline: 'none',
+                      cursor: (!city || loadingLocations) ? 'not-allowed' : 'pointer'
+                    }}
                   >
-                    <option value="">Select Location</option>
-                    {city && locationOptions[city as keyof typeof locationOptions]?.map(location => (
-                      <option key={location} value={location}>{location}</option>
+                    <option value="">
+                      {loadingLocations ? 'Loading...' : 'Select Location'}
+                    </option>
+                    {locations.map((location) => (
+                      <option key={location.LocationID} value={location.LocationName}>
+                        {location.LocationName}
+                      </option>
                     ))}
                   </select>
                 </Box>
               </Box>
               {/* Date and Time Side by Side */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, mb: 1 }}>
                 {/* Date */}
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
                   <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
@@ -437,6 +686,59 @@ const ServiceBooking: React.FC = () => {
                   </select>
                 </Box>
               </Box>
+              
+              {/* Car Type and Full Address Side by Side */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 6, mb: 2 }}>
+                {/* Car Type */}
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '342px' }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
+                    Car Type
+                  </Typography>
+                  <select
+                    value={carType}
+                    onChange={e => setCarType(e.target.value)}
+                    disabled={loadingCarTypes}
+                    style={{ 
+                      padding: '10px', 
+                      fontSize: '16px', 
+                      borderRadius: '6px', 
+                      border: '1px solid #ccc', 
+                      width: '220px', 
+                      background: loadingCarTypes ? '#f5f5f5' : '#fff', 
+                      outline: 'none',
+                      cursor: loadingCarTypes ? 'wait' : 'pointer'
+                    }}
+                  >
+                    <option value="">{loadingCarTypes ? 'Loading...' : 'Select Car Type'}</option>
+                    {carTypes.map((car) => (
+                      <option key={car.id} value={car.type}>
+                        {car.type}
+                      </option>
+                    ))}
+                  </select>
+                </Box>
+                {/* Full Address */}
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '342px' }}>
+                  <Typography variant="subtitle1" fontWeight={600} sx={{ minWidth: 120, mr: 2, textAlign: 'left' }}>
+                    Full Address
+                  </Typography>
+                  <textarea
+                    value={fullAddress}
+                    onChange={e => setFullAddress(e.target.value)}
+                    placeholder="Enter full address where service should be availed"
+                    style={{
+                      padding: '10px',
+                      fontSize: '15px',
+                      borderRadius: '6px',
+                      border: '1px solid #ccc',
+                      width: '220px',
+                      minHeight: '60px',
+                      resize: 'vertical',
+                      outline: 'none'
+                    }}
+                  />
+                </Box>
+              </Box>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', width: { xs: '100%', sm: '80%', md: '60%' }, mt: 5 }}>
               <Button
@@ -453,7 +755,7 @@ const ServiceBooking: React.FC = () => {
                 color="success"
                 size="large"
                 sx={{ borderRadius: 2, fontWeight: 700, minWidth: 120, m: 0 }}
-                disabled={!selectedDate || !selectedTime || !carType || !city || !nearestLocation}
+                disabled={!selectedDate || !selectedTime || !carType || !city || !nearestLocation || !fullAddress.trim()}
                 onClick={() => setActiveStep(2)}
               >
                 Next
@@ -463,8 +765,8 @@ const ServiceBooking: React.FC = () => {
         )}
 
         {activeStep === 2 && (
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 8, mb: 8 }}>
-            <Box sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth:'700px', mb: 4, textAlign: 'center', background: '#f7f8fa', borderRadius: 3, py: 4, px: 4, boxShadow: 3 }}>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4, mb: 4 }}>
+            <Box sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth:'700px', mb: 0, textAlign: 'center', background: '#f7f8fa', borderRadius: 3, py: 4, px: 4, boxShadow: 3 }}>
               <Typography variant="h6" fontWeight={700} color="primary" gutterBottom>
                 Confirmation
               </Typography>
@@ -481,18 +783,34 @@ const ServiceBooking: React.FC = () => {
                 Nearest Location: {nearestLocation || '-'}
               </Typography>
               <Typography variant="subtitle1" fontWeight={600}>
+                Full Address: {fullAddress || '-'}
+              </Typography>
+              <Typography variant="subtitle1" fontWeight={600}>
                 Selected Date: {selectedDate || '-'}
               </Typography>
               <Typography variant="subtitle1" fontWeight={600}>
                 Selected Time: {selectedTime || '-'}
               </Typography>
+              {getCurrentServiceDetails() && (
+                <>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    Service Type: {getCurrentServiceDetails()?.service_type || '-'}
+                  </Typography>
+                  <Typography variant="subtitle1" fontWeight={600}>
+                    Duration: {getCurrentServiceDetails()?.duration_minutes ? `${getCurrentServiceDetails()?.duration_minutes} minutes` : '-'}
+                  </Typography>
+                </>
+              )}
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 0 }}>
                 <Typography variant="subtitle1" fontWeight={600}>
                   Price: {
-                    carType && selectedService && pricingTable[carType] && pricingTable[carType][selectedService]
-                      ? `₹${pricingTable[carType][selectedService]}`
+                    getCurrentPrice() !== null
+                      ? `₹${getCurrentPrice()?.toFixed(2)}`
                       : '-'
                   }
+                  {loadingPricing && (
+                    <CircularProgress size={16} sx={{ ml: 1 }} />
+                  )}
                 </Typography>
               </Box>
             </Box>

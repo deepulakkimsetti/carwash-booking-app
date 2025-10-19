@@ -837,6 +837,168 @@ const simpleSwaggerSpec = {
           }
         }
       }
+    },
+    '/api/saveBookings': {
+      post: {
+        summary: 'Save a new booking',
+        description: 'Create a new car wash service booking with all required details',
+        tags: ['Bookings'],
+        requestBody: {
+          required: true,
+          description: 'Booking details to save',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['customer_id', 'service_id', 'scheduled_time', 'location_address'],
+                properties: {
+                  customer_id: {
+                    type: 'integer',
+                    format: 'int64',
+                    description: 'Customer identifier',
+                    example: 123,
+                    minimum: 1
+                  },
+                  service_id: {
+                    type: 'integer',
+                    format: 'int64',
+                    description: 'Service identifier',
+                    example: 1,
+                    minimum: 1
+                  },
+                  booking_status: {
+                    type: 'string',
+                    description: 'Booking status (optional, defaults to "pending")',
+                    example: 'pending',
+                    enum: ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'],
+                    default: 'pending'
+                  },
+                  scheduled_time: {
+                    type: 'string',
+                    format: 'date-time',
+                    description: 'Scheduled service time (ISO 8601 format)',
+                    example: '2025-10-20T14:30:00'
+                  },
+                  location_address: {
+                    type: 'string',
+                    description: 'Service location address',
+                    example: '123 Main Street, Andheri West, Mumbai',
+                    minLength: 5,
+                    maxLength: 500
+                  },
+                  LocationID: {
+                    type: 'integer',
+                    description: 'Location identifier (optional)',
+                    example: 1,
+                    minimum: 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '201': {
+            description: 'Booking saved successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: true
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Booking saved successfully'
+                    },
+                    booking_id: {
+                      type: 'integer',
+                      format: 'int64',
+                      description: 'Generated booking ID',
+                      example: 1001
+                    },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        customer_id: {
+                          type: 'integer',
+                          example: 123
+                        },
+                        service_id: {
+                          type: 'integer',
+                          example: 1
+                        },
+                        booking_status: {
+                          type: 'string',
+                          example: 'pending'
+                        },
+                        scheduled_time: {
+                          type: 'string',
+                          example: '2025-10-20T14:30:00.000Z'
+                        },
+                        location_address: {
+                          type: 'string',
+                          example: '123 Main Street, Andheri West, Mumbai'
+                        },
+                        LocationID: {
+                          type: 'integer',
+                          example: 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad Request - Invalid input data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'ValidationError'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Missing required fields'
+                    },
+                    details: {
+                      type: 'string',
+                      example: 'customer_id, service_id, scheduled_time, and location_address are required'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Internal Server Error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Database error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Failed to save booking'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 };
@@ -1327,6 +1489,192 @@ app.get('/api/getLocations', async (req, res) => {
         { LocationID: 3, LocationName: 'Powai' },
         { LocationID: 4, LocationName: 'Thane West' }
       ]
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/saveBookings:
+ *   post:
+ *     summary: Save a new booking
+ *     tags: [Bookings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customer_id, service_id, scheduled_time, location_address]
+ *             properties:
+ *               customer_id:
+ *                 type: integer
+ *               service_id:
+ *                 type: integer
+ *               booking_status:
+ *                 type: string
+ *               scheduled_time:
+ *                 type: string
+ *                 format: date-time
+ *               location_address:
+ *                 type: string
+ *               LocationID:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Booking saved successfully
+ *       400:
+ *         description: Invalid input data
+ *       500:
+ *         description: Database error
+ */
+app.post('/api/saveBookings', async (req, res) => {
+  console.log('💾 /api/saveBookings route hit at:', new Date().toISOString());
+  console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const { 
+      customer_id, 
+      service_id, 
+      booking_status = 'pending', 
+      scheduled_time, 
+      location_address,
+      LocationID 
+    } = req.body;
+    
+    // Validate required fields
+    const requiredFields = ['customer_id', 'service_id', 'scheduled_time', 'location_address'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Missing required fields',
+        details: `The following fields are required: ${missingFields.join(', ')}`,
+        requiredFields: requiredFields,
+        providedFields: Object.keys(req.body)
+      });
+    }
+
+    // Validate data types
+    if (isNaN(customer_id) || isNaN(service_id)) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid data types',
+        details: 'customer_id and service_id must be valid numbers'
+      });
+    }
+
+    // Validate LocationID if provided
+    if (LocationID && isNaN(LocationID)) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid LocationID',
+        details: 'LocationID must be a valid number'
+      });
+    }
+
+    // Validate scheduled_time format
+    const scheduledDate = new Date(scheduled_time);
+    if (isNaN(scheduledDate.getTime())) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid scheduled_time format',
+        details: 'scheduled_time must be a valid date-time string (ISO 8601 format)',
+        example: '2025-10-20T14:30:00'
+      });
+    }
+
+    // Validate future date
+    if (scheduledDate <= new Date()) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid scheduled_time',
+        details: 'scheduled_time must be a future date and time'
+      });
+    }
+
+    const request = new sql.Request();
+    
+    // Input parameters with proper SQL data types
+    request.input('customer_id', sql.BigInt, parseInt(customer_id));
+    request.input('service_id', sql.BigInt, parseInt(service_id));
+    request.input('booking_status', sql.VarChar, booking_status);
+    request.input('scheduled_time', sql.DateTime, scheduledDate);
+    request.input('location_address', sql.VarChar, location_address);
+    request.input('created_at', sql.DateTime, new Date());
+    request.input('updated_at', sql.DateTime, new Date());
+    
+    // Add LocationID if provided
+    if (LocationID) {
+      request.input('LocationID', sql.Int, parseInt(LocationID));
+    }
+
+    // Build the INSERT query
+    const columns = [
+      'customer_id', 
+      'service_id', 
+      'booking_status', 
+      'scheduled_time', 
+      'location_address', 
+      'created_at', 
+      'updated_at'
+    ];
+    
+    const values = [
+      '@customer_id', 
+      '@service_id', 
+      '@booking_status', 
+      '@scheduled_time', 
+      '@location_address', 
+      '@created_at', 
+      '@updated_at'
+    ];
+
+    if (LocationID) {
+      columns.push('LocationID');
+      values.push('@LocationID');
+    }
+
+    const insertQuery = `
+      INSERT INTO Bookings (${columns.join(', ')}) 
+      OUTPUT INSERTED.booking_id
+      VALUES (${values.join(', ')})
+    `;
+
+    console.log('🔍 Executing query:', insertQuery);
+    const result = await request.query(insertQuery);
+    
+    const newBookingId = result.recordset[0].booking_id;
+    console.log('✅ Booking saved successfully with ID:', newBookingId);
+
+    // Return success response
+    res.status(201).json({
+      success: true,
+      message: 'Booking saved successfully',
+      booking_id: newBookingId,
+      data: {
+        booking_id: newBookingId,
+        customer_id: parseInt(customer_id),
+        service_id: parseInt(service_id),
+        booking_status: booking_status,
+        scheduled_time: scheduledDate.toISOString(),
+        location_address: location_address,
+        LocationID: LocationID ? parseInt(LocationID) : null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Database error in saveBookings:', err.message);
+    console.error('📋 Error details:', err);
+    
+    res.status(500).json({ 
+      error: 'Database error',
+      message: 'Failed to save booking',
+      details: err.message,
+      tip: 'Check database connection and table structure'
     });
   }
 });
