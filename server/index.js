@@ -652,6 +652,191 @@ const simpleSwaggerSpec = {
           }
         }
       }
+    },
+    '/api/getCities': {
+      get: {
+        summary: 'Get all cities',
+        description: 'Retrieve a list of all active cities with CityID and CityName',
+        tags: ['Cities'],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved list of cities',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      CityID: {
+                        type: 'integer',
+                        description: 'Unique city identifier',
+                        example: 1
+                      },
+                      CityName: {
+                        type: 'string',
+                        description: 'Name of the city',
+                        example: 'Mumbai'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '503': {
+            description: 'Database connection error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Database error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Connection failed'
+                    },
+                    tip: {
+                      type: 'string',
+                      example: 'Add your IP to Azure SQL firewall rules'
+                    },
+                    sampleData: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          CityID: {
+                            type: 'integer',
+                            example: 1
+                          },
+                          CityName: {
+                            type: 'string',
+                            example: 'Mumbai'
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/getLocations': {
+      get: {
+        summary: 'Get locations by city',
+        description: 'Retrieve a list of active locations filtered by CityID with LocationID and LocationName',
+        tags: ['Locations'],
+        parameters: [
+          {
+            name: 'cityId',
+            in: 'query',
+            required: true,
+            description: 'City identifier to filter locations',
+            schema: {
+              type: 'integer',
+              minimum: 1,
+              example: 1
+            }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved list of locations',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      LocationID: {
+                        type: 'integer',
+                        description: 'Unique location identifier',
+                        example: 1
+                      },
+                      LocationName: {
+                        type: 'string',
+                        description: 'Name of the location',
+                        example: 'Andheri West'
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad Request - Missing or invalid cityId parameter',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Missing required parameter'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'cityId parameter is required'
+                    },
+                    example: {
+                      type: 'string',
+                      example: '/api/getLocations?cityId=1'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '503': {
+            description: 'Database connection error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Database error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Connection failed'
+                    },
+                    tip: {
+                      type: 'string',
+                      example: 'Add your IP to Azure SQL firewall rules'
+                    },
+                    sampleData: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          LocationID: {
+                            type: 'integer',
+                            example: 1
+                          },
+                          LocationName: {
+                            type: 'string',
+                            example: 'Andheri West'
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 };
@@ -793,7 +978,9 @@ connectWithRetry().catch(err => {
 const tableSchemas = {
   Bookings: ['booking_id','customer_id','service_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
   Cars: ['car_id','car_type','customer_id','make','model','year','license_plate','color','created_at','updated_at'],
+  Cities: ['CityID','CityName','StateCode','CountryCode','IsActive','CreatedDate','ModifiedDate'],
   database_firewall_rules: ['id','name','start_ip_address','end_ip_address','create_date','modify_date'],
+  Locations: ['LocationID','CityID','LocationName','Area','Pincode','IsActive','CreatedDate','ModifiedDate'],
   Notifications: ['notification_id','user_id','message','type','is_read','created_at'],
   Payments: ['payment_id','booking_id','amount','payment_method','payment_status','transaction_date'],
   Products: ['ProductID','ProductName','Price','ProductDescription'],
@@ -806,7 +993,9 @@ const tableSchemas = {
 const tablePKs = {
   Bookings: 'booking_id',
   Cars: 'car_id',
+  Cities: 'CityID',
   database_firewall_rules: 'id',
+  Locations: 'LocationID',
   Notifications: 'notification_id',
   Payments: 'payment_id',
   Products: 'ProductID',
@@ -1028,6 +1217,115 @@ app.get('/api/product-details', async (req, res) => {
       sampleData: [
         { product_id: 1, product_name: 'Car Wash', price: 10.99 },
         { product_id: 2, product_name: 'Interior Cleaning', price: 15.99 }
+      ]
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/getCities:
+ *   get:
+ *     summary: Get all cities
+ *     tags: [Cities]
+ *     responses:
+ *       200:
+ *         description: List of cities with CityID and CityName
+ *       503:
+ *         description: Database connection error
+ */
+app.get('/api/getCities', async (req, res) => {
+  console.log('🏙️ /api/getCities route hit at:', new Date().toISOString());
+  try {
+    // Query only CityID and CityName from Cities table where IsActive = 1
+    const result = await sql.query('SELECT CityID, CityName FROM Cities WHERE IsActive = 1 ORDER BY CityName');
+    console.log('✅ Query successful, returning', result.recordset.length, 'cities');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('❌ Database error in getCities:', err.message);
+    res.status(503).json({ 
+      error: 'Database error',
+      message: err.message,
+      tip: 'Add your IP to Azure SQL firewall rules',
+      sampleData: [
+        { CityID: 1, CityName: 'Mumbai' },
+        { CityID: 2, CityName: 'Delhi' },
+        { CityID: 3, CityName: 'Bangalore' },
+        { CityID: 4, CityName: 'Chennai' },
+        { CityID: 5, CityName: 'Kolkata' }
+      ]
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/getLocations:
+ *   get:
+ *     summary: Get locations by city ID
+ *     tags: [Locations]
+ *     parameters:
+ *       - in: query
+ *         name: cityId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of locations with LocationID and LocationName
+ *       400:
+ *         description: Missing or invalid cityId parameter
+ *       503:
+ *         description: Database connection error
+ */
+app.get('/api/getLocations', async (req, res) => {
+  console.log('📍 /api/getLocations route hit at:', new Date().toISOString());
+  try {
+    const { cityId } = req.query;
+    
+    // Validate required parameter
+    if (!cityId) {
+      return res.status(400).json({ 
+        error: 'Missing required parameter',
+        message: 'cityId parameter is required',
+        example: '/api/getLocations?cityId=1'
+      });
+    }
+
+    // Validate parameter is a number
+    if (isNaN(cityId)) {
+      return res.status(400).json({ 
+        error: 'Invalid parameter type',
+        message: 'cityId must be a valid number'
+      });
+    }
+
+    const request = new sql.Request();
+    request.input('cityId', sql.Int, parseInt(cityId));
+    
+    // Query only LocationID and LocationName from Locations table where IsActive = 1 and matches CityID
+    const result = await request.query(`
+      SELECT LocationID, LocationName 
+      FROM Locations 
+      WHERE CityID = @cityId AND IsActive = 1 
+      ORDER BY LocationName
+    `);
+    
+    console.log('✅ Query successful, returning', result.recordset.length, 'locations for cityId:', cityId);
+    res.json(result.recordset);
+    
+  } catch (err) {
+    console.error('❌ Database error in getLocations:', err.message);
+    res.status(503).json({ 
+      error: 'Database error',
+      message: err.message,
+      tip: 'Add your IP to Azure SQL firewall rules',
+      query: 'SELECT LocationID, LocationName FROM Locations WHERE CityID = ? AND IsActive = 1',
+      sampleData: [
+        { LocationID: 1, LocationName: 'Andheri West' },
+        { LocationID: 2, LocationName: 'Bandra East' },
+        { LocationID: 3, LocationName: 'Powai' },
+        { LocationID: 4, LocationName: 'Thane West' }
       ]
     });
   }

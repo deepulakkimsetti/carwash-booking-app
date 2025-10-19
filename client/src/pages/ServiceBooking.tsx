@@ -10,13 +10,22 @@ import {
   Button,
   Stepper,
   Step,
-  StepLabel
+  StepLabel,
+  CircularProgress
 } from '@mui/material';
 
-const services = [
-  { title: 'Basic Wash', description: 'A quick and efficient exterior clean to keep your car looking fresh. Includes high-pressure rinse, foam wash, and spot-free drying — perfect for regular maintenance and a clean drive every time.', price: 300 },
-  { title: 'Premium Wash', description: 'Take your car care up a notch. Our Premium Wash includes everything in the Basic package, plus tire cleaning, wax polish, and interior vacuuming. Ideal for those who want a deeper clean and a showroom shine.', price: 500 },
-  { title: 'Ultimate Detailing', description: 'Our Ultimate Detailing service covers exterior polishing, interior shampooing, dashboard conditioning, engine bay cleaning, and ceramic coating options. Designed for car lovers who want nothing but the best.', price: 700 },
+interface ProductService {
+  ProductID: number;
+  ProductName: string;
+  Price: number;
+  ProductDescription: string;
+}
+
+// Fallback services data
+const fallbackServices = [
+  { title: 'Basic Wash - fallback', description: 'A quick and efficient exterior clean to keep your car looking fresh. Includes high-pressure rinse, foam wash, and spot-free drying — perfect for regular maintenance and a clean drive every time.', price: 301 },
+  { title: 'Premium Wash - fallback', description: 'Take your car care up a notch. Our Premium Wash includes everything in the Basic package, plus tire cleaning, wax polish, and interior vacuuming. Ideal for those who want a deeper clean and a showroom shine.', price: 501 },
+  { title: 'Ultimate Detailing - fallback', description: 'Our Ultimate Detailing service covers exterior polishing, interior shampooing, dashboard conditioning, engine bay cleaning, and ceramic coating options. Designed for car lovers who want nothing but the best.', price: 701 },
 ];
 
 const pricingTable: Record<string, Record<string, number>> = {
@@ -68,6 +77,8 @@ const ServiceBooking: React.FC = () => {
   const [carType, setCarType] = useState<string>('');
   const [carTypes, setCarTypes] = useState<CarType[]>([]);
   const [loadingCarTypes, setLoadingCarTypes] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
   const [city, setCity] = useState<string>('');
   const [nearestLocation, setNearestLocation] = useState<string>('');
   const [openSuccess, setOpenSuccess] = useState(false);
@@ -135,6 +146,54 @@ const ServiceBooking: React.FC = () => {
     fetchCarTypes();
   }, []);
 
+  // Fetch services from API
+  useEffect(() => {
+    const fetchServices = async () => {
+      setLoadingServices(true);
+      try {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/product-details', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Services API Response status:', response.status);
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data: ProductService[] = await response.json();
+            console.log('Services API Response:', data);
+            
+            // Transform API data to match our component structure
+            const transformedServices = data.map((product) => ({
+              title: product.ProductName,
+              description: product.ProductDescription,
+              price: product.Price,
+              id: product.ProductID,
+            }));
+            
+            setServices(transformedServices);
+          } else {
+            console.error('Services API returned non-JSON response');
+            setServices(fallbackServices);
+          }
+        } else {
+          console.error('Failed to fetch services, status:', response.status);
+          setServices(fallbackServices);
+        }
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        setServices(fallbackServices);
+      } finally {
+        setLoadingServices(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   React.useEffect(() => {
     if (location.state && location.state.loginSuccess) {
       setOpenSuccess(true);
@@ -191,8 +250,13 @@ const ServiceBooking: React.FC = () => {
   {/* Dynamic Step Content */}
         {activeStep === 0 && (
           <>
-            <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center', alignItems: 'center' }}>
-              {services.map(service => (
+            {loadingServices ? (
+              <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+                <CircularProgress size={60} />
+              </Box>
+            ) : (
+              <Box sx={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center', alignItems: 'center' }}>
+                {services.map(service => (
                 <Box key={service.title} sx={{ width: { xs: '100%', sm: '45%', md: '30%' }, minWidth: 220, maxWidth: 320 }}>
                   <Card
                     sx={{
@@ -228,20 +292,23 @@ const ServiceBooking: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Box>
-              ))}
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5, width: '100%' }}>
-              <Button
-                variant="contained"
-                color="success"
-                size="large"
-                sx={{ borderRadius: 2, fontWeight: 700, minWidth: 120 }}
-                disabled={!selectedService}
-                onClick={handleNext}
-              >
-                Next
-              </Button>
-            </Box>
+                ))}
+              </Box>
+            )}
+            {!loadingServices && (
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 5, width: '100%' }}>
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="large"
+                  sx={{ borderRadius: 2, fontWeight: 700, minWidth: 120 }}
+                  disabled={!selectedService}
+                  onClick={handleNext}
+                >
+                  Next
+                </Button>
+              </Box>
+            )}
           </>
         )}
         {activeStep === 1 && (
@@ -356,13 +423,14 @@ const ServiceBooking: React.FC = () => {
                       const hour = Math.floor(i / 4);
                       const minute = (i % 4) * 15;
                       const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                      // Disable past times for today
+                      // Disable past times for today with 1 hour grace period
                       let disabled = false;
                       if (selectedDate === new Date().toISOString().split('T')[0]) {
                         const now = new Date();
                         const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                        const graceMinutes = 60; // 1 hour grace period
                         const optionMinutes = hour * 60 + minute;
-                        if (optionMinutes <= currentMinutes) disabled = true;
+                        if (optionMinutes <= (currentMinutes + graceMinutes)) disabled = true;
                       }
                       return <option key={timeStr} value={timeStr} disabled={disabled}>{timeStr}</option>;
                     })}
