@@ -999,6 +999,203 @@ const simpleSwaggerSpec = {
           }
         }
       }
+    },
+    '/api/getUserBookingDetails': {
+      get: {
+        summary: 'Get user booking details',
+        description: 'Retrieve comprehensive booking details for a specific customer including service information, car type, location details, and booking status',
+        tags: ['Bookings'],
+        parameters: [
+          {
+            name: 'customer_id',
+            in: 'query',
+            required: true,
+            description: 'Customer identifier to fetch booking details',
+            schema: {
+              type: 'integer',
+              minimum: 1,
+              example: 123
+            }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved user booking details',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: true
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'User booking details retrieved successfully'
+                    },
+                    customer_id: {
+                      type: 'integer',
+                      example: 123
+                    },
+                    count: {
+                      type: 'integer',
+                      description: 'Number of bookings found',
+                      example: 2
+                    },
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          service_name: {
+                            type: 'string',
+                            description: 'Name of the service',
+                            example: 'Premium Wash'
+                          },
+                          car_type: {
+                            type: 'string',
+                            description: 'Type of car',
+                            example: 'Sedan'
+                          },
+                          cityName: {
+                            type: 'string',
+                            description: 'City name',
+                            example: 'Mumbai'
+                          },
+                          NearestLocation: {
+                            type: 'string',
+                            description: 'Nearest location name',
+                            example: 'Andheri West'
+                          },
+                          FullAddress: {
+                            type: 'string',
+                            description: 'Complete service address',
+                            example: '123 Main Street, Andheri West, Mumbai'
+                          },
+                          scheduled_time: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'Scheduled service time',
+                            example: '2025-10-20T14:30:00.000Z'
+                          },
+                          service_type: {
+                            type: 'string',
+                            description: 'Type of service',
+                            example: 'Premium'
+                          },
+                          duration_minutes: {
+                            type: 'integer',
+                            description: 'Service duration in minutes',
+                            example: 45
+                          },
+                          base_price: {
+                            type: 'number',
+                            format: 'decimal',
+                            description: 'Service base price',
+                            example: 29.99
+                          },
+                          booking_id: {
+                            type: 'integer',
+                            description: 'Booking identifier',
+                            example: 1
+                          },
+                          booking_status: {
+                            type: 'string',
+                            description: 'Current booking status',
+                            example: 'pending',
+                            enum: ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled']
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad Request - Missing or invalid customer_id parameter',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Missing required parameter'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'customer_id parameter is required'
+                    },
+                    example: {
+                      type: 'string',
+                      example: '/api/getUserBookingDetails?customer_id=123'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': {
+            description: 'No bookings found for the customer',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: false
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'No bookings found for this customer'
+                    },
+                    customer_id: {
+                      type: 'integer',
+                      example: 123
+                    },
+                    count: {
+                      type: 'integer',
+                      example: 0
+                    },
+                    data: {
+                      type: 'array',
+                      example: []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Internal Server Error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Database error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Connection failed'
+                    },
+                    tip: {
+                      type: 'string',
+                      example: 'Check database connection and table structure'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 };
