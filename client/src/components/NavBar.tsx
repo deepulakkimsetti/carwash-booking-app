@@ -3,16 +3,28 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, IconButton, Divider, Snackbar, Alert } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const NavBar: React.FC = () => {
   const [logoutSuccess, setLogoutSuccess] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading, logout } = useAuth();
 
   const handleLogout = () => {
-  // Clear any auth state here if needed
-  navigate('/');
-  setLogoutSuccess(true);
+    logout();
+    navigate('/');
+    setLogoutSuccess(true);
+  };
+
+  const handleAuthRequiredNavigation = (path: string) => {
+    if (!user && !loading) {
+      // Redirect to login if not authenticated
+      navigate('/login', { state: { from: path, loginRequired: true } });
+    } else {
+      // Navigate normally if authenticated
+      navigate(path);
+    }
   };
 
   const isHome = location.pathname === '/';
@@ -54,9 +66,9 @@ const NavBar: React.FC = () => {
               <>
                 <Button
                   color="inherit"
-                  component={RouterLink}
-                  to="/service-booking"
                   variant="text"
+                  onClick={() => handleAuthRequiredNavigation('/service-booking')}
+                  disabled={loading}
                   sx={{
                     px: 2,
                     borderRadius: 2,
@@ -66,14 +78,14 @@ const NavBar: React.FC = () => {
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
                   }}
                 >
-                  Book New Service
+                  {loading ? 'Loading...' : 'Book New Service'}
                 </Button>
                 <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
                 <Button
                   color="inherit"
-                  component={RouterLink}
-                  to="/my-bookings"
                   variant="text"
+                  onClick={() => handleAuthRequiredNavigation('/my-bookings')}
+                  disabled={loading}
                   sx={{
                     px: 2,
                     borderRadius: 2,
@@ -83,13 +95,14 @@ const NavBar: React.FC = () => {
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
                   }}
                 >
-                  My Bookings
+                  {loading ? 'Loading...' : 'My Bookings'}
                 </Button>
                 <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
                 <IconButton
                   color="inherit"
+                  disabled={loading}
                   sx={{ p: 0.5, borderRadius: 2, m: 0, '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-                  onClick={() => navigate('/user-details')}
+                  onClick={() => handleAuthRequiredNavigation('/user-details')}
                 >
                   <AccountCircleIcon sx={{ width: 28, height: 28 }} />
                 </IconButton>
@@ -97,7 +110,8 @@ const NavBar: React.FC = () => {
                 <Button
                   color="inherit"
                   variant="text"
-                  onClick={handleLogout}
+                  onClick={!user && !loading ? () => navigate('/login') : handleLogout}
+                  disabled={loading}
                   sx={{
                     px: 2,
                     borderRadius: 2,
@@ -107,7 +121,7 @@ const NavBar: React.FC = () => {
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
                   }}
                 >
-                  LogOut
+                  {loading ? 'Loading...' : !user ? 'Login' : 'LogOut'}
                 </Button>
               </>
             )}

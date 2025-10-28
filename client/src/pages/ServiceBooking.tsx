@@ -907,12 +907,6 @@ const ServiceBooking: React.FC = () => {
                   Auth Status: {loading ? 'Loading...' : user ? `Logged in as ${user.email || user.uid}` : 'Not logged in'}
                 </Typography>
                 
-                {/* Debug: Service ID Status */}
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, p: 1, backgroundColor: '#e3f2fd', borderRadius: 1 }}>
-                  Service ID: {currentServiceId || 'Not available'} 
-                  {currentServiceId && ` (from pricing API: ${currentServiceId})`}
-                </Typography>
-                
                 {/* Temporary debug button */}
                 {loading && (
                   <Button 

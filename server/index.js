@@ -1761,6 +1761,122 @@ app.get('/api/getServiceDetails', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/getUserBookingDetails:
+ *   get:
+ *     summary: Get user booking details with comprehensive information
+ *     tags: [Bookings]
+ *     parameters:
+ *       - in: query
+ *         name: customer_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Customer identifier to fetch booking details
+ *         example: 123
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved user booking details
+ *       400:
+ *         description: Missing or invalid customer_id parameter
+ *       404:
+ *         description: No bookings found for the customer
+ *       500:
+ *         description: Database error
+ */
+app.get('/api/getUserBookingDetails', async (req, res) => {
+  console.log('📋 /api/getUserBookingDetails route hit at:', new Date().toISOString());
+  
+  try {
+    const { customer_id } = req.query;
+    
+    // Validate required parameter
+    if (!customer_id) {
+      return res.status(400).json({ 
+        error: 'Missing required parameter',
+        message: 'customer_id parameter is required',
+        example: '/api/getUserBookingDetails?customer_id=123'
+      });
+    }
+
+    // Validate parameter is a number
+    if (isNaN(customer_id)) {
+      return res.status(400).json({ 
+        error: 'Invalid parameter type',
+        message: 'customer_id must be a valid number'
+      });
+    }
+
+    const request = new sql.Request();
+    request.input('customer_id', sql.Int, parseInt(customer_id));
+    
+    // Execute the comprehensive query with joins and subqueries
+    const result = await request.query(`
+      SELECT 
+        s.service_name,
+        (SELECT type FROM [dbo].[Cars] WHERE id = s.car_id) as car_type,
+        (SELECT CityName FROM [dbo].[Cities] WHERE CityID = (SELECT CityID FROM [dbo].[Locations] WHERE LocationID = b.LocationID)) as cityName,
+        (SELECT LocationName FROM [dbo].[Locations] WHERE LocationID = b.LocationID) as NearestLocation,
+        b.location_address as FullAddress,
+        b.scheduled_time,
+        s.service_type,
+        s.duration_minutes,
+        s.base_price,
+        b.booking_id,
+        b.booking_status
+      FROM [dbo].[Services] as s 
+      INNER JOIN [dbo].[Bookings] as b ON s.service_id = b.service_id 
+      WHERE b.customer_id = @customer_id
+      ORDER BY b.scheduled_time DESC
+    `);
+    
+    console.log('✅ Query successful, returning', result.recordset.length, 'booking(s) for customer_id:', customer_id);
+    
+    // Check if any bookings found
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No bookings found for this customer',
+        customer_id: parseInt(customer_id),
+        count: 0,
+        data: []
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'User booking details retrieved successfully',
+      customer_id: parseInt(customer_id),
+      count: result.recordset.length,
+      data: result.recordset
+    });
+    
+  } catch (err) {
+    console.error('❌ Database error in getUserBookingDetails:', err.message);
+    res.status(500).json({ 
+      error: 'Database error',
+      message: err.message,
+      tip: 'Check database connection and table structure',
+      sampleData: [
+        {
+          service_name: 'Premium Wash',
+          car_type: 'Sedan',
+          cityName: 'Mumbai',
+          NearestLocation: 'Andheri West',
+          FullAddress: '123 Main Street, Andheri West, Mumbai',
+          scheduled_time: '2025-10-20T14:30:00.000Z',
+          service_type: 'Premium',
+          duration_minutes: 45,
+          base_price: 29.99,
+          booking_id: 1,
+          booking_status: 'pending'
+        }
+      ]
+    });
+  }
+});
+
 // Generic CRUD routes for each table
 Object.keys(tableSchemas).forEach(table => {
   const pk = tablePKs[table];
