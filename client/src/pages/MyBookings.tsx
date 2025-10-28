@@ -50,7 +50,7 @@ const MyBookings: React.FC = () => {
     try {
       const customerId = parseInt(user.uid) || 123;
       const response = await fetch(
-        `/api/getUserBookingDetails?customer_id=${customerId}`,
+        `https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getUserBookingDetails?customer_id=${customerId}`,
         {
           method: 'GET',
           headers: {
