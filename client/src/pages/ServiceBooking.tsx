@@ -125,7 +125,7 @@ const ServiceBooking: React.FC = () => {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   // Helper function to get the current price for display
   const getCurrentPrice = () => {
@@ -453,8 +453,22 @@ const ServiceBooking: React.FC = () => {
   }, [location.state]);
 
   const handleConfirmBooking = async () => {
+    // Debug: Log the current user state
+    console.log('Current user state:', user);
+    console.log('User exists:', !!user);
+    console.log('User UID:', user?.uid);
+    console.log('Auth loading state:', loading);
+    
+    // Wait for auth to finish loading
+    if (loading) {
+      console.log('Auth still loading, please wait...');
+      setBookingError('Authentication loading, please wait...');
+      return;
+    }
+    
     if (!user) {
-      setBookingError('Please log in to make a booking');
+      console.error('No user found - authentication required');
+      setBookingError('Please log in to make a booking. If you just logged in, please refresh the page.');
       return;
     }
 
@@ -877,6 +891,11 @@ const ServiceBooking: React.FC = () => {
                     <CircularProgress size={16} sx={{ ml: 1 }} />
                   )}
                 </Typography>
+                
+                {/* Debug: Authentication Status */}
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 2, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                  Auth Status: {loading ? 'Loading...' : user ? `Logged in as ${user.email || user.uid}` : 'Not logged in'}
+                </Typography>
               </Box>
             </Box>
             <Box sx={{ width: { xs: '100%', sm: '80%', md: '60%' }, display: 'flex', justifyContent: 'space-between', mt: 6 }}>
@@ -895,13 +914,20 @@ const ServiceBooking: React.FC = () => {
                 size="large"
                 sx={{ borderRadius: 2, fontWeight: 700, minWidth: 120 }}
                 onClick={handleConfirmBooking}
-                disabled={submittingBooking}
+                disabled={submittingBooking || loading}
               >
-                {submittingBooking ? (
+                {loading ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Loading...
+                  </>
+                ) : submittingBooking ? (
                   <>
                     <CircularProgress size={20} sx={{ mr: 1 }} />
                     Saving...
                   </>
+                ) : !user ? (
+                  'Login Required'
                 ) : (
                   'Confirm'
                 )}
