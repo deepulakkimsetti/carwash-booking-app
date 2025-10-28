@@ -154,7 +154,7 @@ const ServiceBooking: React.FC = () => {
     setLoadingPricing(true);
     try {
       const response = await fetch(
-        `/api/getServiceDetails?car_id=${carId}&product_id=${productId}`,
+        `https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getServiceDetails?car_id=${carId}&product_id=${productId}`,
         {
           method: 'GET',
           headers: {
@@ -199,7 +199,7 @@ const ServiceBooking: React.FC = () => {
     const fetchCarTypes = async () => {
       setLoadingCarTypes(true);
       try {
-        const response = await fetch('/api/car-details', {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/car-details', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -260,7 +260,7 @@ const ServiceBooking: React.FC = () => {
     const fetchServices = async () => {
       setLoadingServices(true);
       try {
-        const response = await fetch('/api/product-details', {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/product-details', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -308,7 +308,7 @@ const ServiceBooking: React.FC = () => {
     const fetchCities = async () => {
       setLoadingCities(true);
       try {
-        const response = await fetch('/api/getCities', {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getCities', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -371,7 +371,7 @@ const ServiceBooking: React.FC = () => {
 
       setLoadingLocations(true);
       try {
-        const response = await fetch(`/api/getLocations?cityId=${selectedCity.CityID}`, {
+        const response = await fetch(`https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getLocations?cityId=${selectedCity.CityID}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -483,7 +483,7 @@ const ServiceBooking: React.FC = () => {
 
       console.log('Submitting booking data:', bookingData);
 
-      const response = await fetch('/api/saveBookings', {
+      const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/saveBookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
