@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Snackbar, Alert } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
 import {
   Container,
   Box,
@@ -120,8 +121,11 @@ const ServiceBooking: React.FC = () => {
   const [nearestLocation, setNearestLocation] = useState<string>('');
   const [fullAddress, setFullAddress] = useState<string>('');
   const [openSuccess, setOpenSuccess] = useState(false);
+  const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   // Helper function to get the current price for display
   const getCurrentPrice = () => {
@@ -448,8 +452,62 @@ const ServiceBooking: React.FC = () => {
     }
   }, [location.state]);
 
-  const handleConfirmBooking = () => {
-    navigate('/my-bookings', { state: { bookingSuccess: true } });
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      setBookingError('Please log in to make a booking');
+      return;
+    }
+
+    setSubmittingBooking(true);
+    setBookingError(null);
+
+    try {
+      // Find the selected service object to get service_id
+      const selectedServiceObj = services.find(service => service.title === selectedService);
+      
+      // Find the selected location object to get LocationID
+      const selectedLocationObj = locations.find(loc => loc.LocationName === nearestLocation);
+      
+      // Create the scheduled_time in ISO format
+      const scheduledDateTime = `${selectedDate}T${selectedTime}:00`;
+      
+      // Prepare the request body according to the API specification
+      const bookingData = {
+        customer_id: parseInt(user.uid) || 123, // Using Firebase UID or fallback
+        service_id: selectedServiceObj?.id || 1,
+        booking_status: "pending",
+        scheduled_time: scheduledDateTime,
+        location_address: fullAddress,
+        LocationID: selectedLocationObj?.LocationID || 1
+      };
+
+      console.log('Submitting booking data:', bookingData);
+
+      const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/saveBookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingData)
+      });
+
+      console.log('Booking API Response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Booking saved successfully:', result);
+        navigate('/my-bookings', { state: { bookingSuccess: true } });
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to save booking:', errorText);
+        setBookingError('Failed to save booking. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving booking:', error);
+      setBookingError('An error occurred while saving the booking. Please try again.');
+    } finally {
+      setSubmittingBooking(false);
+    }
   };
 
   const handleServiceSelect = (title: string) => {
@@ -467,6 +525,13 @@ const ServiceBooking: React.FC = () => {
       <Snackbar open={openSuccess} autoHideDuration={2000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Alert onClose={() => setOpenSuccess(false)} severity="success" sx={{ width: '100%' }}>
           Login successful!
+        </Alert>
+      </Snackbar>
+      
+      {/* Error Snackbar for booking errors */}
+      <Snackbar open={!!bookingError} autoHideDuration={6000} onClose={() => setBookingError(null)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert onClose={() => setBookingError(null)} severity="error" sx={{ width: '100%' }}>
+          {bookingError}
         </Alert>
       </Snackbar>
       {/* Booking success Snackbar moved to MyBookings page */}
@@ -830,8 +895,16 @@ const ServiceBooking: React.FC = () => {
                 size="large"
                 sx={{ borderRadius: 2, fontWeight: 700, minWidth: 120 }}
                 onClick={handleConfirmBooking}
+                disabled={submittingBooking}
               >
-                Confirm
+                {submittingBooking ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Confirm'
+                )}
               </Button>
             </Box>
           </Box>
