@@ -1148,7 +1148,7 @@ const tableSchemas = {
   Products: ['ProductID','ProductName','Price','ProductDescription'],
   ProfessionalAllocation: ['allocation_id','booking_id','professional_id','assigned_at','status'],
   ProfessionalSkills: ['skill_id','professional_id','service_id','proficiency_level'],
-  Services: ['service_id','service_name','description','service_type','base_price','duration_minutes','created_at']
+  Services: ['service_id','service_name','description','service_type','base_price','duration_minutes','created_at','car_id','product_id']
 };
 
 // Primary keys

@@ -113,6 +113,7 @@ const ServiceBooking: React.FC = () => {
   const [pricingDetails, setPricingDetails] = useState<PricingDetail[]>([]);
   const [loadingPricing, setLoadingPricing] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [currentServiceId, setCurrentServiceId] = useState<number | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -174,21 +175,27 @@ const ServiceBooking: React.FC = () => {
           if (data.success && data.data.length > 0) {
             setPricingDetails(data.data);
             setCurrentPrice(data.data[0].base_price);
+            setCurrentServiceId(data.data[0].service_id);
+            console.log('Updated current service ID:', data.data[0].service_id);
           } else {
             console.warn('No pricing data found for the given parameters');
             setCurrentPrice(null);
+            setCurrentServiceId(null);
           }
         } else {
           console.error('Pricing API returned non-JSON response');
           setCurrentPrice(null);
+          setCurrentServiceId(null);
         }
       } else {
         console.error('Failed to fetch pricing details, status:', response.status);
         setCurrentPrice(null);
+        setCurrentServiceId(null);
       }
     } catch (error) {
       console.error('Error fetching pricing details:', error);
       setCurrentPrice(null);
+      setCurrentServiceId(null);
     } finally {
       setLoadingPricing(false);
     }
@@ -440,6 +447,7 @@ const ServiceBooking: React.FC = () => {
     } else {
       // Reset pricing when car type or service is not selected
       setCurrentPrice(null);
+      setCurrentServiceId(null);
       setPricingDetails([]);
     }
   }, [carType, selectedService, carTypes, services]); // Fetch pricing whenever car type or service changes
@@ -476,19 +484,21 @@ const ServiceBooking: React.FC = () => {
     setBookingError(null);
 
     try {
-      // Find the selected service object to get service_id
-      const selectedServiceObj = services.find(service => service.title === selectedService);
-      
       // Find the selected location object to get LocationID
       const selectedLocationObj = locations.find(loc => loc.LocationName === nearestLocation);
       
       // Create the scheduled_time in ISO format
       const scheduledDateTime = `${selectedDate}T${selectedTime}:00`;
       
+      // Use the service_id from the pricing API if available, otherwise fallback to services array
+      const serviceId = currentServiceId || 1;
+      
+      console.log('Using service_id:', serviceId, '(from pricing API:', currentServiceId, ', services fallback available)');
+      
       // Prepare the request body according to the API specification
       const bookingData = {
         customer_id: parseInt(user.uid) || 123, // Using Firebase UID or fallback
-        service_id: selectedServiceObj?.id || 1,
+        service_id: serviceId,
         booking_status: "pending",
         scheduled_time: scheduledDateTime,
         location_address: fullAddress,
@@ -895,6 +905,12 @@ const ServiceBooking: React.FC = () => {
                 {/* Debug: Authentication Status */}
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 2, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
                   Auth Status: {loading ? 'Loading...' : user ? `Logged in as ${user.email || user.uid}` : 'Not logged in'}
+                </Typography>
+                
+                {/* Debug: Service ID Status */}
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, p: 1, backgroundColor: '#e3f2fd', borderRadius: 1 }}>
+                  Service ID: {currentServiceId || 'Not available'} 
+                  {currentServiceId && ` (from pricing API: ${currentServiceId})`}
                 </Typography>
                 
                 {/* Temporary debug button */}
