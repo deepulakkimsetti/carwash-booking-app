@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import NavBar from './components/NavBar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -16,21 +17,23 @@ import CaptureDetails from './pages/CaptureDetails';
 
 
 const AppRouter: React.FC = () => (
-  <Router>
-    <NavBar />
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-  {/* <Route path="/dashboard" element={<Dashboard />} /> */}
-  <Route path="/service-booking" element={<ServiceBooking />} />
-  <Route path="/profile" element={<UserProfile />} />
-  <Route path="/services" element={<Services />} />
-  <Route path="/my-bookings" element={<MyBookings />} />
-  <Route path="/user-details" element={<UserDetails />} />
-  <Route path="/capture-details" element={<CaptureDetails />} />
-  </Routes>
-  </Router>
+  <AuthProvider>
+    <Router>
+      <NavBar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+    {/* <Route path="/dashboard" element={<Dashboard />} /> */}
+    <Route path="/service-booking" element={<ServiceBooking />} />
+    <Route path="/profile" element={<UserProfile />} />
+    <Route path="/services" element={<Services />} />
+    <Route path="/my-bookings" element={<MyBookings />} />
+    <Route path="/user-details" element={<UserDetails />} />
+    <Route path="/capture-details" element={<CaptureDetails />} />
+    </Routes>
+    </Router>
+  </AuthProvider>
 );
 
 export default AppRouter;

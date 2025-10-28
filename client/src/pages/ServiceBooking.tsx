@@ -896,6 +896,18 @@ const ServiceBooking: React.FC = () => {
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 2, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
                   Auth Status: {loading ? 'Loading...' : user ? `Logged in as ${user.email || user.uid}` : 'Not logged in'}
                 </Typography>
+                
+                {/* Temporary debug button */}
+                {loading && (
+                  <Button 
+                    variant="outlined" 
+                    size="small" 
+                    onClick={() => window.location.reload()} 
+                    sx={{ mt: 1 }}
+                  >
+                    Refresh Page (If Auth Stuck)
+                  </Button>
+                )}
               </Box>
             </Box>
             <Box sx={{ width: { xs: '100%', sm: '80%', md: '60%' }, display: 'flex', justifyContent: 'space-between', mt: 6 }}>
