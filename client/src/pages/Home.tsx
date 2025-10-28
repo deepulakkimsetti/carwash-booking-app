@@ -108,9 +108,19 @@ const Home: React.FC = () => {
 
   if (loading) {
     return (
-      <Container maxWidth={false} disableGutters sx={{ mt: { xs: 7, sm: 8 }, px: 0, width: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box sx={{ 
+        width: '100vw', 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 1000
+      }}>
         <CircularProgress size={60} />
-      </Container>
+      </Box>
     );
   }
 
