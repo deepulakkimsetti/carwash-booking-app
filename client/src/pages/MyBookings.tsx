@@ -15,6 +15,7 @@ interface BookingDetail {
   service_type: string;
   duration_minutes: number;
   base_price: number;
+  created_at: string;
 }
 
 const MyBookings: React.FC = () => {
@@ -61,57 +62,38 @@ const MyBookings: React.FC = () => {
         }
       );
 
-      console.log('User bookings API Response status:', response.status);
-
       if (response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const rawData = await response.json();
-          console.log('User bookings API Response (raw):', rawData);
-          console.log('Raw data type:', typeof rawData);
-          console.log('Raw data is array:', Array.isArray(rawData));
           
           let bookingsData: BookingDetail[] = [];
           
           if (Array.isArray(rawData)) {
             // If API returns direct array
-            console.log('Data is direct array, length:', rawData.length);
             bookingsData = rawData;
           } else if (rawData && typeof rawData === 'object') {
             // If API returns object, look for common wrapper properties
-            console.log('Data is object, keys:', Object.keys(rawData));
-            
             if ('data' in rawData && Array.isArray(rawData.data)) {
-              console.log('Found data.data array, length:', rawData.data.length);
               bookingsData = rawData.data;
             } else if ('bookings' in rawData && Array.isArray(rawData.bookings)) {
-              console.log('Found data.bookings array, length:', rawData.bookings.length);
               bookingsData = rawData.bookings;
             } else if ('results' in rawData && Array.isArray(rawData.results)) {
-              console.log('Found data.results array, length:', rawData.results.length);
               bookingsData = rawData.results;
             } else {
-              console.log('No recognized array property found in object');
               // Try to use the raw object as array if it has numeric keys
               const values = Object.values(rawData);
               if (values.length > 0 && typeof values[0] === 'object') {
-                console.log('Trying to convert object values to array');
                 bookingsData = values as BookingDetail[];
               }
             }
           }
           
-          console.log('Final bookings data:', bookingsData);
-          console.log('Final bookings length:', bookingsData.length);
-          console.log('About to call setBookings...');
           setBookings(bookingsData);
-          console.log('setBookings called successfully');
         } else {
-          console.error('User bookings API returned non-JSON response');
           setError('Failed to load bookings');
         }
       } else {
-        console.error('Failed to fetch user bookings, status:', response.status);
         setError('Failed to load bookings');
       }
     } catch (error) {
@@ -136,12 +118,7 @@ const MyBookings: React.FC = () => {
     }
   }, [user, authLoading]);
 
-  // Debug: Monitor bookings state changes
-  useEffect(() => {
-    console.log('Bookings state updated:', bookings);
-    console.log('Bookings length:', bookings.length);
-    console.log('Loading state:', loading);
-  }, [bookings, loading]);
+
 
   return (
     <Container maxWidth="md" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 1, sm: 2, md: 4 } }}>
@@ -163,20 +140,7 @@ const MyBookings: React.FC = () => {
           My Bookings
         </Typography>
         
-        {/* Debug Display */}
-        <Box sx={{ mb: 2, p: 2, bgcolor: '#e3f2fd', borderRadius: 1 }}>
-          <Typography variant="caption" display="block">
-            Debug: loading={loading.toString()}, user={user ? 'exists' : 'null'}, bookings.length={bookings.length}
-          </Typography>
-          <Typography variant="caption" display="block">
-            Render condition (should show cards): {(!loading && bookings.length > 0).toString()}
-          </Typography>
-          {bookings.length > 0 && (
-            <Typography variant="caption" display="block">
-              First booking: {JSON.stringify(bookings[0])}
-            </Typography>
-          )}
-        </Box>
+
 
         {/* Loading State */}
         {loading && (
@@ -246,6 +210,9 @@ const MyBookings: React.FC = () => {
                     </Typography>
                     <Typography variant="subtitle1" fontWeight={600}>
                       Price: ₹{booking.base_price?.toFixed(2) || '0.00'}
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Booking Created: {booking.created_at ? new Date(booking.created_at).toLocaleString() : '-'}
                     </Typography>
                   </CardContent>
                 </Card>

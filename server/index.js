@@ -2021,7 +2021,8 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
         s.duration_minutes,
         s.base_price,
         b.booking_id,
-        b.booking_status
+        b.booking_status,
+        b.created_at,
       FROM [dbo].[Services] as s 
       INNER JOIN [dbo].[Bookings] as b ON s.service_id = b.service_id 
       WHERE b.customer_id = @customer_id
