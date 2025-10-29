@@ -175,62 +175,68 @@ const MyBookings: React.FC = () => {
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
                         Booking Id: {booking.booking_id || '-'}
                       </Typography>
+                      <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
                         Booking Status: {booking.booking_status || '-'}
                       </Typography>
                     </Box>
                     
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
                         Selected Service: {booking.service_name || '-'}
                       </Typography>
+                      <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
                         Car Type: {booking.car_type || '-'}
                       </Typography>
                     </Box>
                     
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
                         City: {booking.cityName || '-'}
                       </Typography>
+                      <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
                         Nearest Location: {booking.NearestLocation || '-'}
                       </Typography>
                     </Box>
                     
-                    <Box sx={{ mb: 1 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
                         Full Address: {booking.FullAddress || '-'}
                       </Typography>
-                    </Box>
-                    
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
                         Selected Date: {date}
                       </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
                         Selected Time: {time}
                       </Typography>
-                    </Box>
-                    
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
                         Service Type: {booking.service_type || '-'}
                       </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
                         Duration: {booking.duration_minutes ? `${booking.duration_minutes} minutes` : '-'}
                       </Typography>
-                    </Box>
-                    
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                      <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
                         Price: ₹{booking.base_price?.toFixed(2) || '0.00'}
                       </Typography>
-                      <Typography variant="subtitle1" fontWeight={600}>
+                    </Box>
+                    
+                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ textAlign: 'center' }}>
                         Booking Created: {booking.created_at ? new Date(booking.created_at).toLocaleString() : '-'}
                       </Typography>
                     </Box>
