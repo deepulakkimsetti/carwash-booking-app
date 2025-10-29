@@ -1010,11 +1010,11 @@ const simpleSwaggerSpec = {
             name: 'customer_id',
             in: 'query',
             required: true,
-            description: 'Customer identifier to fetch booking details',
+            description: 'Customer identifier (alphanumeric string) to fetch booking details',
             schema: {
-              type: 'integer',
-              minimum: 1,
-              example: 123
+              type: 'string',
+              minLength: 1,
+              example: 'CUST001'
             }
           }
         ],
@@ -1035,8 +1035,8 @@ const simpleSwaggerSpec = {
                       example: 'User booking details retrieved successfully'
                     },
                     customer_id: {
-                      type: 'integer',
-                      example: 123
+                      type: 'string',
+                      example: 'CUST001'
                     },
                     count: {
                       type: 'integer',
@@ -1131,7 +1131,7 @@ const simpleSwaggerSpec = {
                     },
                     example: {
                       type: 'string',
-                      example: '/api/getUserBookingDetails?customer_id=123'
+                      example: '/api/getUserBookingDetails?customer_id=CUST001'
                     }
                   }
                 }
@@ -1154,8 +1154,8 @@ const simpleSwaggerSpec = {
                       example: 'No bookings found for this customer'
                     },
                     customer_id: {
-                      type: 'integer',
-                      example: 123
+                      type: 'string',
+                      example: 'CUST001'
                     },
                     count: {
                       type: 'integer',
@@ -1993,20 +1993,20 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
       return res.status(400).json({ 
         error: 'Missing required parameter',
         message: 'customer_id parameter is required',
-        example: '/api/getUserBookingDetails?customer_id=123'
+        example: '/api/getUserBookingDetails?customer_id=CUST001'
       });
     }
 
-    // Validate parameter is a number
-    if (isNaN(customer_id)) {
+    // Validate parameter is not empty
+    if (typeof customer_id !== 'string' || customer_id.trim().length === 0) {
       return res.status(400).json({ 
         error: 'Invalid parameter type',
-        message: 'customer_id must be a valid number'
+        message: 'customer_id must be a valid alphanumeric string'
       });
     }
 
     const request = new sql.Request();
-    request.input('customer_id', sql.Int, parseInt(customer_id));
+    request.input('customer_id', sql.VarChar, customer_id.trim());
     
     // Execute the comprehensive query with joins and subqueries
     const result = await request.query(`
@@ -2036,7 +2036,7 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'No bookings found for this customer',
-        customer_id: parseInt(customer_id),
+        customer_id: customer_id,
         count: 0,
         data: []
       });
@@ -2045,7 +2045,7 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
     res.json({
       success: true,
       message: 'User booking details retrieved successfully',
-      customer_id: parseInt(customer_id),
+      customer_id: customer_id,
       count: result.recordset.length,
       data: result.recordset
     });

@@ -51,7 +51,7 @@ const MyBookings: React.FC = () => {
     setError(null);
 
     try {
-      const customerId = parseInt(user.uid) || 123;
+      const customerId = user.uid; // Use Firebase UID directly as string
       const response = await fetch(
         `https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getUserBookingDetails?customer_id=${customerId}`,
         {

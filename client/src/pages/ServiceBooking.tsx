@@ -497,7 +497,7 @@ const ServiceBooking: React.FC = () => {
       
       // Prepare the request body according to the API specification
       const bookingData = {
-        customer_id: parseInt(user.uid) || 123, // Using Firebase UID or fallback
+        customer_id: user.uid, // Use Firebase UID directly as string
         service_id: serviceId,
         booking_status: "pending",
         scheduled_time: scheduledDateTime,
