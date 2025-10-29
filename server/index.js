@@ -151,10 +151,9 @@ const simpleSwaggerSpec = {
             example: 1
           },
           customer_id: {
-            type: 'integer',
-            description: 'Customer identifier',
-            example: 123,
-            minimum: 1
+            type: 'string',
+            description: 'Customer identifier (alphanumeric)',
+            example: 'CUST001'
           },
           service_id: {
             type: 'integer',
@@ -853,11 +852,9 @@ const simpleSwaggerSpec = {
                 required: ['customer_id', 'service_id', 'scheduled_time', 'location_address'],
                 properties: {
                   customer_id: {
-                    type: 'integer',
-                    format: 'int64',
-                    description: 'Customer identifier',
-                    example: 123,
-                    minimum: 1
+                    type: 'string',
+                    description: 'Customer identifier (alphanumeric)',
+                    example: 'CUST001'
                   },
                   service_id: {
                     type: 'integer',
@@ -923,8 +920,8 @@ const simpleSwaggerSpec = {
                       type: 'object',
                       properties: {
                         customer_id: {
-                          type: 'integer',
-                          example: 123
+                          type: 'string',
+                          example: 'CUST001'
                         },
                         service_id: {
                           type: 'integer',
@@ -1705,7 +1702,7 @@ app.get('/api/getLocations', async (req, res) => {
  *             required: [customer_id, service_id, scheduled_time, location_address]
  *             properties:
  *               customer_id:
- *                 type: integer
+ *                 type: string
  *               service_id:
  *                 type: integer
  *               booking_status:
@@ -1754,11 +1751,20 @@ app.post('/api/saveBookings', async (req, res) => {
     }
 
     // Validate data types
-    if (isNaN(customer_id) || isNaN(service_id)) {
+    // customer_id is now an alphanumeric string (e.g. 'CUST001')
+    if (!customer_id || typeof customer_id !== 'string' || customer_id.trim().length === 0) {
       return res.status(400).json({
         error: 'ValidationError',
         message: 'Invalid data types',
-        details: 'customer_id and service_id must be valid numbers'
+        details: 'customer_id must be a non-empty string (alphanumeric)'
+      });
+    }
+
+    if (isNaN(service_id)) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid data types',
+        details: 'service_id must be a valid number'
       });
     }
 
@@ -1794,8 +1800,9 @@ app.post('/api/saveBookings', async (req, res) => {
     const request = new sql.Request();
     
     // Input parameters with proper SQL data types
-    request.input('customer_id', sql.BigInt, parseInt(customer_id));
-    request.input('service_id', sql.BigInt, parseInt(service_id));
+  // customer_id stored as VARCHAR in DB to allow alphanumeric IDs
+  request.input('customer_id', sql.VarChar, customer_id);
+  request.input('service_id', sql.BigInt, parseInt(service_id));
     request.input('booking_status', sql.VarChar, booking_status);
     request.input('scheduled_time', sql.DateTime, scheduledDate);
     request.input('location_address', sql.VarChar, location_address);
@@ -1852,7 +1859,7 @@ app.post('/api/saveBookings', async (req, res) => {
       booking_id: newBookingId,
       data: {
         booking_id: newBookingId,
-        customer_id: parseInt(customer_id),
+        customer_id: customer_id,
         service_id: parseInt(service_id),
         booking_status: booking_status,
         scheduled_time: scheduledDate.toISOString(),
