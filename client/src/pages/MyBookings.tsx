@@ -66,13 +66,45 @@ const MyBookings: React.FC = () => {
       if (response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
-          const data: BookingDetail[] = await response.json();
-          console.log('User bookings API Response:', data);
-          console.log('Data type:', typeof data);
-          console.log('Data is array:', Array.isArray(data));
-          console.log('Data length:', data.length);
+          const rawData = await response.json();
+          console.log('User bookings API Response (raw):', rawData);
+          console.log('Raw data type:', typeof rawData);
+          console.log('Raw data is array:', Array.isArray(rawData));
+          
+          let bookingsData: BookingDetail[] = [];
+          
+          if (Array.isArray(rawData)) {
+            // If API returns direct array
+            console.log('Data is direct array, length:', rawData.length);
+            bookingsData = rawData;
+          } else if (rawData && typeof rawData === 'object') {
+            // If API returns object, look for common wrapper properties
+            console.log('Data is object, keys:', Object.keys(rawData));
+            
+            if ('data' in rawData && Array.isArray(rawData.data)) {
+              console.log('Found data.data array, length:', rawData.data.length);
+              bookingsData = rawData.data;
+            } else if ('bookings' in rawData && Array.isArray(rawData.bookings)) {
+              console.log('Found data.bookings array, length:', rawData.bookings.length);
+              bookingsData = rawData.bookings;
+            } else if ('results' in rawData && Array.isArray(rawData.results)) {
+              console.log('Found data.results array, length:', rawData.results.length);
+              bookingsData = rawData.results;
+            } else {
+              console.log('No recognized array property found in object');
+              // Try to use the raw object as array if it has numeric keys
+              const values = Object.values(rawData);
+              if (values.length > 0 && typeof values[0] === 'object') {
+                console.log('Trying to convert object values to array');
+                bookingsData = values as BookingDetail[];
+              }
+            }
+          }
+          
+          console.log('Final bookings data:', bookingsData);
+          console.log('Final bookings length:', bookingsData.length);
           console.log('About to call setBookings...');
-          setBookings(data);
+          setBookings(bookingsData);
           console.log('setBookings called successfully');
         } else {
           console.error('User bookings API returned non-JSON response');
