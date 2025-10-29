@@ -66,10 +66,7 @@ const MyBookings: React.FC = () => {
         if (contentType && contentType.includes('application/json')) {
           const data: BookingDetail[] = await response.json();
           console.log('User bookings API Response:', data);
-          console.log('Data length:', data.length);
-          console.log('About to set bookings state...');
           setBookings(data);
-          console.log('Bookings state set successfully');
         } else {
           console.error('User bookings API returned non-JSON response');
           setError('Failed to load bookings');
@@ -100,12 +97,6 @@ const MyBookings: React.FC = () => {
     }
   }, [user, authLoading]);
 
-  // Debug: Log when bookings state changes
-  useEffect(() => {
-    console.log('Bookings state changed:', bookings);
-    console.log('Bookings length:', bookings.length);
-  }, [bookings]);
-
   return (
     <Container maxWidth="md" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 1, sm: 2, md: 4 } }}>
       <Snackbar open={openSuccess} autoHideDuration={2000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
@@ -125,16 +116,6 @@ const MyBookings: React.FC = () => {
         <Typography variant="h4" fontWeight={700} align="center" gutterBottom>
           My Bookings
         </Typography>
-        
-        {/* Debug Information */}
-        <Box sx={{ mb: 2, p: 2, bgcolor: '#e3f2fd', borderRadius: 1 }}>
-          <Typography variant="caption" display="block">
-            Debug: loading={loading.toString()}, user={user ? 'exists' : 'null'}, authLoading={authLoading.toString()}, bookings.length={bookings.length}
-          </Typography>
-          <Typography variant="caption" display="block">
-            Render condition: {(!loading && bookings.length > 0).toString()}
-          </Typography>
-        </Box>
 
         {/* Loading State */}
         {loading && (
