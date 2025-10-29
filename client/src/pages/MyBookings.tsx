@@ -175,45 +175,65 @@ const MyBookings: React.FC = () => {
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Booking Id: {booking.booking_id || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Booking Status: {booking.booking_status || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Selected Service: {booking.service_name || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Car Type: {booking.car_type || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      City: {booking.cityName || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Nearest Location: {booking.NearestLocation || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Full Address: {booking.FullAddress || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Selected Date: {date}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Selected Time: {time}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Service Type: {booking.service_type || '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Duration: {booking.duration_minutes ? `${booking.duration_minutes} minutes` : '-'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Price: ₹{booking.base_price?.toFixed(2) || '0.00'}
-                    </Typography>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Booking Created: {booking.created_at ? new Date(booking.created_at).toLocaleString() : '-'}
-                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Booking Id: {booking.booking_id || '-'}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Booking Status: {booking.booking_status || '-'}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Selected Service: {booking.service_name || '-'}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Car Type: {booking.car_type || '-'}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        City: {booking.cityName || '-'}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Nearest Location: {booking.NearestLocation || '-'}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Full Address: {booking.FullAddress || '-'}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Selected Date: {date}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Selected Time: {time}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Service Type: {booking.service_type || '-'}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Duration: {booking.duration_minutes ? `${booking.duration_minutes} minutes` : '-'}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Price: ₹{booking.base_price?.toFixed(2) || '0.00'}
+                      </Typography>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Booking Created: {booking.created_at ? new Date(booking.created_at).toLocaleString() : '-'}
+                      </Typography>
+                    </Box>
                   </CardContent>
                 </Card>
               );
