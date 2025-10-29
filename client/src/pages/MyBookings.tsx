@@ -68,7 +68,12 @@ const MyBookings: React.FC = () => {
         if (contentType && contentType.includes('application/json')) {
           const data: BookingDetail[] = await response.json();
           console.log('User bookings API Response:', data);
+          console.log('Data type:', typeof data);
+          console.log('Data is array:', Array.isArray(data));
+          console.log('Data length:', data.length);
+          console.log('About to call setBookings...');
           setBookings(data);
+          console.log('setBookings called successfully');
         } else {
           console.error('User bookings API returned non-JSON response');
           setError('Failed to load bookings');
@@ -99,6 +104,13 @@ const MyBookings: React.FC = () => {
     }
   }, [user, authLoading]);
 
+  // Debug: Monitor bookings state changes
+  useEffect(() => {
+    console.log('Bookings state updated:', bookings);
+    console.log('Bookings length:', bookings.length);
+    console.log('Loading state:', loading);
+  }, [bookings, loading]);
+
   return (
     <Container maxWidth="md" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 1, sm: 2, md: 4 } }}>
       <Snackbar open={openSuccess} autoHideDuration={2000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
@@ -118,6 +130,21 @@ const MyBookings: React.FC = () => {
         <Typography variant="h4" fontWeight={700} align="center" gutterBottom>
           My Bookings
         </Typography>
+        
+        {/* Debug Display */}
+        <Box sx={{ mb: 2, p: 2, bgcolor: '#e3f2fd', borderRadius: 1 }}>
+          <Typography variant="caption" display="block">
+            Debug: loading={loading.toString()}, user={user ? 'exists' : 'null'}, bookings.length={bookings.length}
+          </Typography>
+          <Typography variant="caption" display="block">
+            Render condition (should show cards): {(!loading && bookings.length > 0).toString()}
+          </Typography>
+          {bookings.length > 0 && (
+            <Typography variant="caption" display="block">
+              First booking: {JSON.stringify(bookings[0])}
+            </Typography>
+          )}
+        </Box>
 
         {/* Loading State */}
         {loading && (
