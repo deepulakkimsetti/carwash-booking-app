@@ -62,7 +62,7 @@ const MyBookings: React.FC = () => {
         }
       );
 
-      if (response.ok) {
+      if (response.ok || response.status === 404) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const rawData = await response.json();
@@ -91,10 +91,18 @@ const MyBookings: React.FC = () => {
           
           setBookings(bookingsData);
         } else {
-          setError('Failed to load bookings');
+          // Handle non-JSON response - treat as no bookings found
+          setBookings([]);
         }
       } else {
-        setError('Failed to load bookings');
+        // Only show error for actual server errors, not for "no data found" scenarios
+        if (response.status >= 500) {
+          setError('Server error occurred while loading bookings');
+        } else if (response.status === 401 || response.status === 403) {
+          setError('Authentication required to view bookings');
+        } else {
+          setError('Failed to load bookings');
+        }
       }
     } catch (error) {
       console.error('Error fetching user bookings:', error);
