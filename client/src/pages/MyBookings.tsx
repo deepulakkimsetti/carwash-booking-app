@@ -4,6 +4,8 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 interface BookingDetail {
+  booking_id: string;
+  booking_status: string;
   service_name: string;
   car_type: string;
   cityName: string;
@@ -150,8 +152,11 @@ const MyBookings: React.FC = () => {
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
-                    <Typography variant="h6" fontWeight={700} color="primary" gutterBottom>
-                      Confirmed
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Booking Id: {booking.booking_id || '-'}
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Booking Status: {booking.booking_status || '-'}
                     </Typography>
                     <Typography variant="subtitle1" fontWeight={600}>
                       Selected Service: {booking.service_name || '-'}
