@@ -18,9 +18,21 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Check user role from database
+      const userRef = ref(db, 'users/' + user.uid);
+      const snapshot = await get(userRef);
+      const userData = snapshot.val();
+      
       setTimeout(() => {
-        navigate('/service-booking', { state: { loginSuccess: true } });
+        // Route based on user role
+        if (userData && userData.role === 'professional') {
+          navigate('/my-assignments', { state: { loginSuccess: true } });
+        } else {
+          navigate('/service-booking', { state: { loginSuccess: true } });
+        }
       }, 1200);
     } catch (err: any) {
       setError(err.message);
@@ -42,7 +54,12 @@ const Login: React.FC = () => {
         if (!data || !data.fullName || !data.phone || !data.address || !data.role) {
           navigate('/capture-details');
         } else {
-          navigate('/service-booking', { state: { loginSuccess: true } });
+          // Route based on user role
+          if (data.role === 'professional') {
+            navigate('/my-assignments', { state: { loginSuccess: true } });
+          } else {
+            navigate('/service-booking', { state: { loginSuccess: true } });
+          }
         }
       }, 1200);
     } catch (err: any) {

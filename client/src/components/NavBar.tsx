@@ -1,18 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Box, IconButton, Divider, Snackbar, Alert } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ref, get } from 'firebase/database';
+import { db } from '../firebase';
 
 const NavBar: React.FC = () => {
-  const [logoutSuccess, setLogoutSuccess] = React.useState(false);
+  const [logoutSuccess, setLogoutSuccess] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, logout } = useAuth();
 
+  // Fetch user role from Firebase Realtime Database
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        try {
+          const userRef = ref(db, `users/${user.uid}`);
+          const snapshot = await get(userRef);
+          
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            setUserRole(userData.role || 'customer');
+          } else {
+            setUserRole('customer'); // Default to customer if no data found
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+          setUserRole('customer'); // Default to customer on error
+        }
+      } else {
+        setUserRole(null);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
+
   const handleLogout = () => {
     logout();
+    setUserRole(null); // Reset user role on logout
     navigate('/');
     setLogoutSuccess(true);
   };
@@ -64,65 +94,117 @@ const NavBar: React.FC = () => {
             )}
             {!isHome && !isLogin && !isSignup && (
               <>
-                <Button
-                  color="inherit"
-                  variant="text"
-                  onClick={() => handleAuthRequiredNavigation('/service-booking')}
-                  disabled={loading}
-                  sx={{
-                    px: 2,
-                    borderRadius: 2,
-                    fontWeight: 500,
-                    textTransform: 'none',
-                    m: 0,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
-                  }}
-                >
-                  {loading ? 'Loading...' : 'Book New Service'}
-                </Button>
-                <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
-                <Button
-                  color="inherit"
-                  variant="text"
-                  onClick={() => handleAuthRequiredNavigation('/my-bookings')}
-                  disabled={loading}
-                  sx={{
-                    px: 2,
-                    borderRadius: 2,
-                    fontWeight: 500,
-                    textTransform: 'none',
-                    m: 0,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
-                  }}
-                >
-                  {loading ? 'Loading...' : 'My Bookings'}
-                </Button>
-                <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
-                <IconButton
-                  color="inherit"
-                  disabled={loading}
-                  sx={{ p: 0.5, borderRadius: 2, m: 0, '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-                  onClick={() => handleAuthRequiredNavigation('/user-details')}
-                >
-                  <AccountCircleIcon sx={{ width: 28, height: 28 }} />
-                </IconButton>
-                <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
-                <Button
-                  color="inherit"
-                  variant="text"
-                  onClick={!user && !loading ? () => navigate('/login') : handleLogout}
-                  disabled={loading}
-                  sx={{
-                    px: 2,
-                    borderRadius: 2,
-                    fontWeight: 500,
-                    textTransform: 'none',
-                    m: 0,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
-                  }}
-                >
-                  {loading ? 'Loading...' : !user ? 'Login' : 'LogOut'}
-                </Button>
+                {/* Show different navigation based on user role */}
+                {userRole === 'professional' ? (
+                  <>
+                    {/* Professional Navigation */}
+                    <Button
+                      color="inherit"
+                      variant="text"
+                      onClick={() => handleAuthRequiredNavigation('/my-assignments')}
+                      disabled={loading}
+                      sx={{
+                        px: 2,
+                        borderRadius: 2,
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        m: 0,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                      }}
+                    >
+                      {loading ? 'Loading...' : 'My Assignments'}
+                    </Button>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
+                    <IconButton
+                      color="inherit"
+                      disabled={loading}
+                      sx={{ p: 0.5, borderRadius: 2, m: 0, '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
+                      onClick={() => handleAuthRequiredNavigation('/user-details')}
+                    >
+                      <AccountCircleIcon sx={{ width: 28, height: 28 }} />
+                    </IconButton>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
+                    <Button
+                      color="inherit"
+                      variant="text"
+                      onClick={handleLogout}
+                      disabled={loading}
+                      sx={{
+                        px: 2,
+                        borderRadius: 2,
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        m: 0,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                      }}
+                    >
+                      {loading ? 'Loading...' : 'LogOut'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* Customer Navigation */}
+                    <Button
+                      color="inherit"
+                      variant="text"
+                      onClick={() => handleAuthRequiredNavigation('/service-booking')}
+                      disabled={loading}
+                      sx={{
+                        px: 2,
+                        borderRadius: 2,
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        m: 0,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                      }}
+                    >
+                      {loading ? 'Loading...' : 'Book New Service'}
+                    </Button>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
+                    <Button
+                      color="inherit"
+                      variant="text"
+                      onClick={() => handleAuthRequiredNavigation('/my-bookings')}
+                      disabled={loading}
+                      sx={{
+                        px: 2,
+                        borderRadius: 2,
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        m: 0,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                      }}
+                    >
+                      {loading ? 'Loading...' : 'My Bookings'}
+                    </Button>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
+                    <IconButton
+                      color="inherit"
+                      disabled={loading}
+                      sx={{ p: 0.5, borderRadius: 2, m: 0, '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
+                      onClick={() => handleAuthRequiredNavigation('/user-details')}
+                    >
+                      <AccountCircleIcon sx={{ width: 28, height: 28 }} />
+                    </IconButton>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1, bgcolor: '#e0e0e0', width: '1px', height: 28 }} />
+                    <Button
+                      color="inherit"
+                      variant="text"
+                      onClick={!user && !loading ? () => navigate('/login') : handleLogout}
+                      disabled={loading}
+                      sx={{
+                        px: 2,
+                        borderRadius: 2,
+                        fontWeight: 500,
+                        textTransform: 'none',
+                        m: 0,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
+                      }}
+                    >
+                      {loading ? 'Loading...' : !user ? 'Login' : 'LogOut'}
+                    </Button>
+                  </>
+                )}
               </>
             )}
             {(isHome || isLogin) && (

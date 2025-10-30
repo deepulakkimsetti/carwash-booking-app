@@ -14,6 +14,7 @@ import Services from './pages/Services';
 import MyBookings from './pages/MyBookings';
 import UserDetails from './pages/UserDetails';
 import CaptureDetails from './pages/CaptureDetails';
+import MyAssignments from './pages/MyAssignments';
 
 
 const AppRouter: React.FC = () => (
@@ -29,6 +30,7 @@ const AppRouter: React.FC = () => (
     <Route path="/profile" element={<UserProfile />} />
     <Route path="/services" element={<Services />} />
     <Route path="/my-bookings" element={<MyBookings />} />
+    <Route path="/my-assignments" element={<MyAssignments />} />
     <Route path="/user-details" element={<UserDetails />} />
     <Route path="/capture-details" element={<CaptureDetails />} />
     </Routes>
