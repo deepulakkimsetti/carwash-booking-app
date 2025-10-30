@@ -139,7 +139,7 @@ const MyAssignments: React.FC = () => {
   };
 
   useEffect(() => {
-    if (location.state && location.state.loginSuccess) {
+    if (location.state && (location.state.loginSuccess || location.state.signupSuccess)) {
       setOpenSuccess(true);
       // Remove state after showing popup
       window.history.replaceState({}, document.title);
@@ -157,7 +157,7 @@ const MyAssignments: React.FC = () => {
       {/* Success Snackbar */}
       <Snackbar open={openSuccess} autoHideDuration={2000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Alert onClose={() => setOpenSuccess(false)} severity="success" sx={{ width: '100%' }}>
-          Login successful!
+          {location.state?.signupSuccess ? 'Signup successful!' : 'Login successful!'}
         </Alert>
       </Snackbar>
 

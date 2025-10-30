@@ -453,7 +453,7 @@ const ServiceBooking: React.FC = () => {
   }, [carType, selectedService, carTypes, services]); // Fetch pricing whenever car type or service changes
 
   React.useEffect(() => {
-    if (location.state && location.state.loginSuccess) {
+    if (location.state && (location.state.loginSuccess || location.state.signupSuccess)) {
       setOpenSuccess(true);
       // Remove state after showing popup
       window.history.replaceState({}, document.title);
@@ -548,7 +548,7 @@ const ServiceBooking: React.FC = () => {
     <Container maxWidth="md" sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 1, sm: 2, md: 4 } }}>
       <Snackbar open={openSuccess} autoHideDuration={2000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Alert onClose={() => setOpenSuccess(false)} severity="success" sx={{ width: '100%' }}>
-          Login successful!
+          {location.state?.signupSuccess ? 'Signup successful!' : 'Login successful!'}
         </Alert>
       </Snackbar>
       

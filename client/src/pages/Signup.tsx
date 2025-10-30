@@ -45,6 +45,7 @@ const Signup: React.FC = () => {
   // Handler for success Snackbar close
   const handleSuccessClose = () => {
     setOpenSuccess(false);
+    const userRole = role; // Store role before clearing
     setFullName('');
     setPhone('');
     setAddress('');
@@ -54,7 +55,12 @@ const Signup: React.FC = () => {
     setCity('');
     setNearestLocations([]);
     setTimeout(() => {
-      navigate('/login');
+      // Route based on user role
+      if (userRole === 'professional') {
+        navigate('/my-assignments', { state: { signupSuccess: true } });
+      } else {
+        navigate('/service-booking', { state: { signupSuccess: true } });
+      }
     }, 500); // Delay navigation to show Snackbar
   };
 
