@@ -1420,7 +1420,7 @@ async function getProfessionalsByLocation(locationId) {
 async function getProfessionalBookingCount(professionalId) {
   try {
     const request = new sql.Request();
-    request.input('professional_id', sql.BigInt, parseInt(professionalId));
+    request.input('professional_id', sql.VarChar, professionalId);
     
     const result = await request.query(`
       SELECT COUNT(*) as bookingCount 
@@ -1442,7 +1442,7 @@ async function getProfessionalBookingCount(professionalId) {
 async function isProfessionalAvailable(professionalId, scheduledTime, durationMinutes) {
   try {
     const request = new sql.Request();
-    request.input('professional_id', sql.BigInt, parseInt(professionalId));
+    request.input('professional_id', sql.VarChar, professionalId);
     request.input('scheduled_time', sql.DateTime, scheduledTime);
     
     // Calculate end time
@@ -1488,7 +1488,7 @@ async function assignProfessionalToBooking(bookingId, professionalId) {
   try {
     const request = new sql.Request();
     request.input('booking_id', sql.BigInt, bookingId);
-    request.input('professional_id', sql.BigInt, parseInt(professionalId));
+    request.input('professional_id', sql.VarChar, professionalId);
     request.input('assigned_at', sql.DateTime, new Date());
     request.input('status', sql.VarChar(20), 'assigned');
     
