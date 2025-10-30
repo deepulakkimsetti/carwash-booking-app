@@ -1234,6 +1234,221 @@ const simpleSwaggerSpec = {
           }
         }
       }
+    },
+    '/api/getProfessionalAssignments': {
+      get: {
+        summary: 'Get professional assignments',
+        description: 'Retrieve all booking assignments for a specific professional including comprehensive service and location details',
+        tags: ['Professionals'],
+        parameters: [
+          {
+            name: 'professional_id',
+            in: 'query',
+            required: true,
+            description: 'Professional identifier (Firebase UID) to fetch assigned bookings',
+            schema: {
+              type: 'string',
+              minLength: 1,
+              example: 'KG5KglMviZYnUgBzmxwXxKwjBns2'
+            }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Successfully retrieved professional assignments',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: true
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Professional assignments retrieved successfully'
+                    },
+                    professional_id: {
+                      type: 'string',
+                      example: 'KG5KglMviZYnUgBzmxwXxKwjBns2'
+                    },
+                    count: {
+                      type: 'integer',
+                      description: 'Number of assignments found',
+                      example: 3
+                    },
+                    data: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          service_name: {
+                            type: 'string',
+                            description: 'Name of the service',
+                            example: 'Premium Wash'
+                          },
+                          car_type: {
+                            type: 'string',
+                            description: 'Type of car',
+                            example: 'Sedan'
+                          },
+                          cityName: {
+                            type: 'string',
+                            description: 'City name',
+                            example: 'Mumbai'
+                          },
+                          NearestLocation: {
+                            type: 'string',
+                            description: 'Nearest location name',
+                            example: 'Andheri West'
+                          },
+                          FullAddress: {
+                            type: 'string',
+                            description: 'Complete service address',
+                            example: '123 Main Street, Andheri West, Mumbai'
+                          },
+                          scheduled_time: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'Scheduled service time',
+                            example: '2025-10-20T14:30:00.000Z'
+                          },
+                          service_type: {
+                            type: 'string',
+                            description: 'Type of service',
+                            example: 'Premium'
+                          },
+                          duration_minutes: {
+                            type: 'integer',
+                            description: 'Service duration in minutes',
+                            example: 45
+                          },
+                          base_price: {
+                            type: 'number',
+                            format: 'decimal',
+                            description: 'Service base price',
+                            example: 29.99
+                          },
+                          booking_id: {
+                            type: 'integer',
+                            description: 'Booking identifier',
+                            example: 1
+                          },
+                          booking_status: {
+                            type: 'string',
+                            description: 'Current booking status',
+                            example: 'assigned',
+                            enum: ['pending', 'assigned', 'confirmed', 'in-progress', 'completed', 'cancelled']
+                          },
+                          created_at: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'Booking creation timestamp',
+                            example: '2025-10-20T10:00:00.000Z'
+                          },
+                          assigned_at: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'Assignment timestamp',
+                            example: '2025-10-20T10:05:00.000Z'
+                          },
+                          assignment_status: {
+                            type: 'string',
+                            description: 'Current assignment status',
+                            example: 'assigned',
+                            enum: ['assigned', 'confirmed', 'completed', 'rejected']
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad Request - Missing or invalid professional_id parameter',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Missing required parameter'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'professional_id parameter is required'
+                    },
+                    example: {
+                      type: 'string',
+                      example: '/api/getProfessionalAssignments?professional_id=KG5KglMviZYnUgBzmxwXxKwjBns2'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': {
+            description: 'No assignments found for the professional',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: false
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'No assignments found for this professional'
+                    },
+                    professional_id: {
+                      type: 'string',
+                      example: 'KG5KglMviZYnUgBzmxwXxKwjBns2'
+                    },
+                    count: {
+                      type: 'integer',
+                      example: 0
+                    },
+                    data: {
+                      type: 'array',
+                      example: []
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Internal Server Error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Database error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Connection failed'
+                    },
+                    tip: {
+                      type: 'string',
+                      example: 'Check database connection and table structure'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 };
@@ -2367,6 +2582,128 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
           base_price: 29.99,
           booking_id: 1,
           booking_status: 'pending'
+        }
+      ]
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/getProfessionalAssignments:
+ *   get:
+ *     summary: Get professional assignments with booking details
+ *     tags: [Professionals]
+ *     parameters:
+ *       - in: query
+ *         name: professional_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Professional identifier (Firebase UID) to fetch assigned bookings
+ *         example: 'KG5KglMviZYnUgBzmxwXxKwjBns2'
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved professional assignments
+ *       400:
+ *         description: Missing or invalid professional_id parameter
+ *       404:
+ *         description: No assignments found for the professional
+ *       500:
+ *         description: Database error
+ */
+app.get('/api/getProfessionalAssignments', async (req, res) => {
+  console.log('👷 /api/getProfessionalAssignments route hit at:', new Date().toISOString());
+  
+  try {
+    const { professional_id } = req.query;
+    
+    // Validate required parameter
+    if (!professional_id) {
+      return res.status(400).json({ 
+        error: 'Missing required parameter',
+        message: 'professional_id parameter is required',
+        example: '/api/getProfessionalAssignments?professional_id=KG5KglMviZYnUgBzmxwXxKwjBns2'
+      });
+    }
+
+    // Validate parameter is not empty
+    if (typeof professional_id !== 'string' || professional_id.trim().length === 0) {
+      return res.status(400).json({ 
+        error: 'Invalid parameter type',
+        message: 'professional_id must be a valid alphanumeric string (Firebase UID)'
+      });
+    }
+
+    const request = new sql.Request();
+    request.input('professional_id', sql.VarChar, professional_id.trim());
+    
+    // Execute the comprehensive query with joins and subqueries
+    const result = await request.query(`
+      SELECT 
+        s.service_name,
+        (SELECT type FROM [dbo].[Cars] WHERE id = s.car_id) as car_type,
+        (SELECT CityName FROM [dbo].[Cities] WHERE CityID = (SELECT CityID FROM [dbo].[Locations] WHERE LocationID = b.LocationID)) as cityName,
+        (SELECT LocationName FROM [dbo].[Locations] WHERE LocationID = b.LocationID) as NearestLocation,
+        b.location_address as FullAddress,
+        b.scheduled_time,
+        s.service_type,
+        s.duration_minutes,
+        s.base_price,
+        b.booking_id,
+        b.booking_status,
+        b.created_at,
+        pa.assigned_at,
+        pa.status as assignment_status
+      FROM [dbo].[Services] as s 
+      INNER JOIN [dbo].[Bookings] as b ON s.service_id = b.service_id
+      INNER JOIN [dbo].[ProfessionalAllocation] as pa ON pa.booking_id = b.booking_id 
+      WHERE pa.professional_id = @professional_id
+      ORDER BY b.scheduled_time DESC
+    `);
+    
+    console.log('✅ Query successful, returning', result.recordset.length, 'assignments for professional:', professional_id);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No assignments found for this professional',
+        professional_id: professional_id,
+        count: 0,
+        data: []
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Professional assignments retrieved successfully',
+      professional_id: professional_id,
+      count: result.recordset.length,
+      data: result.recordset
+    });
+    
+  } catch (err) {
+    console.error('❌ Database error in getProfessionalAssignments:', err.message);
+    res.status(500).json({ 
+      error: 'Database error',
+      message: err.message,
+      tip: 'Check database connection and table structure',
+      sampleData: [
+        {
+          service_name: 'Premium Wash',
+          car_type: 'Sedan',
+          cityName: 'Mumbai',
+          NearestLocation: 'Andheri West',
+          FullAddress: '123 Main Street, Andheri West, Mumbai',
+          scheduled_time: '2025-10-20T14:30:00.000Z',
+          service_type: 'Premium',
+          duration_minutes: 45,
+          base_price: 29.99,
+          booking_id: 1,
+          booking_status: 'assigned',
+          created_at: '2025-10-20T10:00:00.000Z',
+          assigned_at: '2025-10-20T10:05:00.000Z',
+          assignment_status: 'assigned'
         }
       ]
     });
