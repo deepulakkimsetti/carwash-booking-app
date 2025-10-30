@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Box, Typography, TextField, Button, Snackbar, Alert, Card, CardContent, Checkbox, FormControl, InputLabel, Select, MenuItem, OutlinedInput, ListItemText } from '@mui/material';
+import { Container, Box, Typography, TextField, Button, Snackbar, Alert, Card, CardContent, Checkbox, FormControl, InputLabel, Select, MenuItem, OutlinedInput, ListItemText, CircularProgress } from '@mui/material';
 import { auth, db } from '../firebase';
 import { ref, set } from 'firebase/database';
 
-const locationOptions = {
-  Hyderabad: ['HiTech City', 'Madhapur', 'Gachibowli', 'Lingampally', 'Ameenpur', 'Kukatpally', 'Bachupally', 'Miyapur', 'Kondapur', 'Manikonda', 'Narsingi', 'Serilingampally'],
-  Bangalore: ['MG Road', 'Indiranagar', 'Koramangala', 'Whitefield', 'Jayanagar', 'HSR Layout', 'BTM Layout', 'Marathahalli', 'Electronic City', 'Sarjapur Road', 'Yelahanka', 'Hebbal']
-};
+interface City {
+  CityID: number;
+  CityName: string;
+  StateCode?: string;
+}
+
+interface Location {
+  LocationID: number;
+  LocationName: string;
+}
 
 const CaptureDetails: React.FC = () => {
   const [fullName, setFullName] = useState('');
@@ -20,7 +26,92 @@ const CaptureDetails: React.FC = () => {
   const [openError, setOpenError] = useState(false);
   const [success, setSuccess] = useState('');
   const [openSuccess, setOpenSuccess] = useState(false);
+  
+  // API data states
+  const [cities, setCities] = useState<City[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  
   const navigate = useNavigate();
+
+  // Fetch cities from API
+  useEffect(() => {
+    const fetchCities = async () => {
+      setLoadingCities(true);
+      try {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getCities', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data: City[] = await response.json();
+            setCities(data);
+          } else {
+            console.error('Cities API returned non-JSON response');
+          }
+        } else {
+          console.error('Failed to fetch cities, status:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+
+    fetchCities();
+  }, []);
+
+  // Fetch locations from API when city changes
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (!city) {
+        setLocations([]);
+        return;
+      }
+
+      // Find the selected city object to get its ID
+      const selectedCity = cities.find(c => c.CityName === city);
+      if (!selectedCity) {
+        console.error('Selected city not found in cities array');
+        return;
+      }
+
+      setLoadingLocations(true);
+      try {
+        const response = await fetch(`https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getLocations?cityId=${selectedCity.CityID}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data: Location[] = await response.json();
+            setLocations(data);
+          } else {
+            console.error('Locations API returned non-JSON response');
+          }
+        } else {
+          console.error('Failed to fetch locations, status:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+      } finally {
+        setLoadingLocations(false);
+      }
+    };
+
+    fetchLocations();
+  }, [city, cities]);
 
   // Handler for role change
   const handleRoleChange = (newRole: string) => {
@@ -172,12 +263,16 @@ const CaptureDetails: React.FC = () => {
                       value={city}
                       onChange={(e) => handleCityChange(e.target.value as string)}
                       input={<OutlinedInput label="Select City" />}
+                      disabled={loadingCities}
                     >
                       <MenuItem value="">
-                        <em>Select City</em>
+                        <em>{loadingCities ? 'Loading cities...' : 'Select City'}</em>
                       </MenuItem>
-                      <MenuItem value="Hyderabad">Hyderabad</MenuItem>
-                      <MenuItem value="Bangalore">Bangalore</MenuItem>
+                      {cities.map((cityItem) => (
+                        <MenuItem key={cityItem.CityID} value={cityItem.CityName}>
+                          {cityItem.CityName}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Box>
@@ -198,14 +293,21 @@ const CaptureDetails: React.FC = () => {
                       }}
                       input={<OutlinedInput label="Select Nearest Locations" />}
                       renderValue={(selected) => selected.join(', ')}
-                      disabled={!city}
+                      disabled={!city || loadingLocations}
                     >
-                      {city && locationOptions[city as keyof typeof locationOptions]?.map((location) => (
-                        <MenuItem key={location} value={location}>
-                          <Checkbox checked={nearestLocations.indexOf(location) > -1} />
-                          <ListItemText primary={location} />
+                      {loadingLocations ? (
+                        <MenuItem disabled>
+                          <CircularProgress size={20} sx={{ mr: 1 }} />
+                          Loading locations...
                         </MenuItem>
-                      ))}
+                      ) : (
+                        locations.map((location) => (
+                          <MenuItem key={location.LocationID} value={location.LocationName}>
+                            <Checkbox checked={nearestLocations.indexOf(location.LocationName) > -1} />
+                            <ListItemText primary={location.LocationName} />
+                          </MenuItem>
+                        ))
+                      )}
                     </Select>
                   </FormControl>
                 </Box>
