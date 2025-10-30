@@ -3,8 +3,37 @@ const sql = require('mssql');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 const cors = require('cors');
+const admin = require('firebase-admin');
 
 const app = express();
+
+// Initialize Firebase Admin SDK
+const firebaseConfig = {
+  apiKey: "AIzaSyAfMucPwlt4AizXe7DGQWMtvPzMBxeYX_Q",
+  authDomain: "carwashbookingapp-2020wa15536.firebaseapp.com",
+  projectId: "carwashbookingapp-2020wa15536",
+  storageBucket: "carwashbookingapp-2020wa15536.firebasestorage.app",
+  messagingSenderId: "570399238161",
+  appId: "1:570399238161:web:be8871216c5934f35f29b0",
+  measurementId: "G-B4BPMGQQ26",
+  databaseURL: "https://carwashbookingapp-2020wa15536-default-rtdb.firebaseio.com"
+};
+
+// Initialize Firebase (only once)
+if (!admin.apps.length) {
+  try {
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      databaseURL: firebaseConfig.databaseURL
+    });
+    console.log('✅ Firebase Admin SDK initialized successfully');
+  } catch (error) {
+    console.error('❌ Firebase initialization error:', error.message);
+    console.log('⚠️ Continuing without Firebase - professional assignment will be disabled');
+  }
+}
+
+const firebaseDB = admin.database();
 
 // Optimizations for Azure Free Tier
 app.use(express.json({ limit: '1mb' })); // Limit payload size
@@ -1330,6 +1359,157 @@ connectWithRetry().catch(err => {
   console.log('🚀 Server will start anyway, database retries continue in background');
 });
 
+// Helper Functions for Professional Assignment
+
+/**
+ * Get professionals from Firebase by location ID
+ */
+async function getProfessionalsByLocation(locationId) {
+  try {
+    const professionalsRef = firebaseDB.ref('professionals');
+    const snapshot = await professionalsRef.once('value');
+    const professionals = [];
+    
+    snapshot.forEach((childSnapshot) => {
+      const professional = childSnapshot.val();
+      const professionalId = childSnapshot.key;
+      
+      // Check if nearestLocations array contains the locationId
+      if (professional.nearestLocations && Array.isArray(professional.nearestLocations)) {
+        if (professional.nearestLocations.includes(locationId)) {
+          professionals.push({
+            id: professionalId,
+            ...professional
+          });
+        }
+      }
+    });
+    
+    console.log(`✅ Found ${professionals.length} professionals for LocationID ${locationId}`);
+    return professionals;
+  } catch (error) {
+    console.error('❌ Error fetching professionals from Firebase:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Get total booking count for a professional
+ * Excludes bookings with 'completed' or 'rejected' status
+ */
+async function getProfessionalBookingCount(professionalId) {
+  try {
+    const request = new sql.Request();
+    request.input('professional_id', sql.BigInt, parseInt(professionalId));
+    
+    const result = await request.query(`
+      SELECT COUNT(*) as bookingCount 
+      FROM ProfessionalAllocation 
+      WHERE professional_id = @professional_id
+        AND status NOT IN ('completed', 'rejected')
+    `);
+    
+    return result.recordset[0].bookingCount || 0;
+  } catch (error) {
+    console.error('❌ Error getting booking count:', error.message);
+    return 0;
+  }
+}
+
+/**
+ * Check if professional is available during the specified time range
+ */
+async function isProfessionalAvailable(professionalId, scheduledTime, durationMinutes) {
+  try {
+    const request = new sql.Request();
+    request.input('professional_id', sql.BigInt, parseInt(professionalId));
+    request.input('scheduled_time', sql.DateTime, scheduledTime);
+    
+    // Calculate end time
+    const endTime = new Date(scheduledTime);
+    endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+    request.input('end_time', sql.DateTime, endTime);
+    
+    // Check for overlapping bookings
+    const result = await request.query(`
+      SELECT COUNT(*) as conflictCount
+      FROM ProfessionalAllocation pa
+      INNER JOIN Bookings b ON pa.booking_id = b.booking_id
+      INNER JOIN Services s ON b.service_id = s.service_id
+      WHERE pa.professional_id = @professional_id
+        AND pa.status IN ('assigned', 'confirmed')
+        AND b.booking_status NOT IN ('cancelled', 'completed')
+        AND (
+          -- Check if new booking overlaps with existing bookings
+          (b.scheduled_time <= @scheduled_time AND 
+           DATEADD(MINUTE, s.duration_minutes, b.scheduled_time) > @scheduled_time)
+          OR
+          (b.scheduled_time < @end_time AND 
+           DATEADD(MINUTE, s.duration_minutes, b.scheduled_time) >= @end_time)
+          OR
+          (b.scheduled_time >= @scheduled_time AND 
+           DATEADD(MINUTE, s.duration_minutes, b.scheduled_time) <= @end_time)
+        )
+    `);
+    
+    const isAvailable = result.recordset[0].conflictCount === 0;
+    console.log(`${isAvailable ? '✅' : '⏭️'} Professional ${professionalId} ${isAvailable ? 'is available' : 'has conflicts'}`);
+    return isAvailable;
+  } catch (error) {
+    console.error('❌ Error checking professional availability:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Assign professional to booking
+ */
+async function assignProfessionalToBooking(bookingId, professionalId) {
+  try {
+    const request = new sql.Request();
+    request.input('booking_id', sql.BigInt, bookingId);
+    request.input('professional_id', sql.BigInt, parseInt(professionalId));
+    request.input('assigned_at', sql.DateTime, new Date());
+    request.input('status', sql.VarChar(20), 'assigned');
+    
+    const result = await request.query(`
+      INSERT INTO ProfessionalAllocation (booking_id, professional_id, assigned_at, status)
+      OUTPUT INSERTED.allocation_id, INSERTED.booking_id, INSERTED.professional_id, 
+             INSERTED.assigned_at, INSERTED.status
+      VALUES (@booking_id, @professional_id, @assigned_at, @status)
+    `);
+    
+    console.log(`✅ Professional ${professionalId} assigned to booking ${bookingId}`);
+    return result.recordset[0];
+  } catch (error) {
+    console.error('❌ Error assigning professional:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Update booking status
+ */
+async function updateBookingStatus(bookingId, status) {
+  try {
+    const request = new sql.Request();
+    request.input('booking_id', sql.BigInt, bookingId);
+    request.input('booking_status', sql.VarChar, status);
+    request.input('updated_at', sql.DateTime, new Date());
+    
+    await request.query(`
+      UPDATE Bookings 
+      SET booking_status = @booking_status, updated_at = @updated_at
+      WHERE booking_id = @booking_id
+    `);
+    
+    console.log(`✅ Booking ${bookingId} status updated to: ${status}`);
+  } catch (error) {
+    console.error('❌ Error updating booking status:', error.message);
+    throw error;
+  }
+}
+
 // Table schemas
 const tableSchemas = {
   Bookings: ['booking_id','customer_id','service_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
@@ -1736,8 +1916,8 @@ app.post('/api/saveBookings', async (req, res) => {
       LocationID 
     } = req.body;
     
-    // Validate required fields
-    const requiredFields = ['customer_id', 'service_id', 'scheduled_time', 'location_address'];
+    // Validate required fields (now LocationID is required for professional assignment)
+    const requiredFields = ['customer_id', 'service_id', 'scheduled_time', 'location_address', 'LocationID'];
     const missingFields = requiredFields.filter(field => !req.body[field]);
     
     if (missingFields.length > 0) {
@@ -1751,7 +1931,6 @@ app.post('/api/saveBookings', async (req, res) => {
     }
 
     // Validate data types
-    // customer_id is now an alphanumeric string (e.g. 'CUST001')
     if (!customer_id || typeof customer_id !== 'string' || customer_id.trim().length === 0) {
       return res.status(400).json({
         error: 'ValidationError',
@@ -1760,20 +1939,11 @@ app.post('/api/saveBookings', async (req, res) => {
       });
     }
 
-    if (isNaN(service_id)) {
+    if (isNaN(service_id) || isNaN(LocationID)) {
       return res.status(400).json({
         error: 'ValidationError',
         message: 'Invalid data types',
-        details: 'service_id must be a valid number'
-      });
-    }
-
-    // Validate LocationID if provided
-    if (LocationID && isNaN(LocationID)) {
-      return res.status(400).json({
-        error: 'ValidationError',
-        message: 'Invalid LocationID',
-        details: 'LocationID must be a valid number'
+        details: 'service_id and LocationID must be valid numbers'
       });
     }
 
@@ -1797,88 +1967,193 @@ app.post('/api/saveBookings', async (req, res) => {
       });
     }
 
-    const request = new sql.Request();
+    // STEP 1: Get service duration for availability check
+    console.log('🔍 Fetching service duration...');
+    const serviceRequest = new sql.Request();
+    serviceRequest.input('service_id', sql.BigInt, parseInt(service_id));
+    const serviceResult = await serviceRequest.query('SELECT duration_minutes FROM Services WHERE service_id = @service_id');
     
-    // Input parameters with proper SQL data types
-  // customer_id stored as VARCHAR in DB to allow alphanumeric IDs
-  request.input('customer_id', sql.VarChar, customer_id);
-  request.input('service_id', sql.BigInt, parseInt(service_id));
+    if (serviceResult.recordset.length === 0) {
+      return res.status(404).json({
+        error: 'NotFound',
+        message: 'Service not found',
+        details: `No service found with ID: ${service_id}`
+      });
+    }
+    
+    const durationMinutes = serviceResult.recordset[0].duration_minutes;
+    console.log(`✅ Service duration: ${durationMinutes} minutes`);
+
+    // STEP 2: Save the booking first
+    const request = new sql.Request();
+    request.input('customer_id', sql.VarChar, customer_id);
+    request.input('service_id', sql.BigInt, parseInt(service_id));
     request.input('booking_status', sql.VarChar, booking_status);
     request.input('scheduled_time', sql.DateTime, scheduledDate);
     request.input('location_address', sql.VarChar, location_address);
     request.input('created_at', sql.DateTime, new Date());
     request.input('updated_at', sql.DateTime, new Date());
-    
-    // Add LocationID if provided
-    if (LocationID) {
-      request.input('LocationID', sql.Int, parseInt(LocationID));
-    }
-
-    // Build the INSERT query
-    const columns = [
-      'customer_id', 
-      'service_id', 
-      'booking_status', 
-      'scheduled_time', 
-      'location_address', 
-      'created_at', 
-      'updated_at'
-    ];
-    
-    const values = [
-      '@customer_id', 
-      '@service_id', 
-      '@booking_status', 
-      '@scheduled_time', 
-      '@location_address', 
-      '@created_at', 
-      '@updated_at'
-    ];
-
-    if (LocationID) {
-      columns.push('LocationID');
-      values.push('@LocationID');
-    }
+    request.input('LocationID', sql.Int, parseInt(LocationID));
 
     const insertQuery = `
-      INSERT INTO Bookings (${columns.join(', ')}) 
+      INSERT INTO Bookings (customer_id, service_id, booking_status, scheduled_time, location_address, created_at, updated_at, LocationID) 
       OUTPUT INSERTED.booking_id
-      VALUES (${values.join(', ')})
+      VALUES (@customer_id, @service_id, @booking_status, @scheduled_time, @location_address, @created_at, @updated_at, @LocationID)
     `;
 
-    console.log('🔍 Executing query:', insertQuery);
+    console.log('🔍 Executing booking insert query...');
     const result = await request.query(insertQuery);
-    
     const newBookingId = result.recordset[0].booking_id;
     console.log('✅ Booking saved successfully with ID:', newBookingId);
 
-    // Return success response
+    // STEP 3: Get professionals from Firebase based on LocationID
+    console.log(`🔍 Fetching professionals from Firebase for LocationID: ${LocationID}`);
+    let professionals = [];
+    let allocationResult = null;
+    let assignedProfessional = null;
+    
+    try {
+      professionals = await getProfessionalsByLocation(parseInt(LocationID));
+    } catch (firebaseError) {
+      console.error('❌ Firebase error:', firebaseError.message);
+      // Continue without professionals - will update status below
+    }
+
+    if (professionals.length === 0) {
+      // STEP 4a: No professionals available for this location
+      console.log('⚠️ No professionals available for this location');
+      await updateBookingStatus(newBookingId, 'No Professionals available in your area');
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Booking saved but no professionals available in your area',
+        booking_id: newBookingId,
+        booking_status: 'No Professionals available in your area',
+        data: {
+          booking_id: newBookingId,
+          customer_id: customer_id,
+          service_id: parseInt(service_id),
+          booking_status: 'No Professionals available in your area',
+          scheduled_time: scheduledDate.toISOString(),
+          location_address: location_address,
+          LocationID: parseInt(LocationID),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+
+    // STEP 4b: Get booking counts for each professional and sort by lowest count
+    console.log('📊 Getting booking counts for professionals...');
+    const professionalsWithCounts = await Promise.all(
+      professionals.map(async (prof) => {
+        const bookingCount = await getProfessionalBookingCount(prof.id);
+        return {
+          ...prof,
+          bookingCount
+        };
+      })
+    );
+
+    // Sort by booking count (lowest first)
+    professionalsWithCounts.sort((a, b) => a.bookingCount - b.bookingCount);
+    console.log('✅ Professionals sorted by booking count:', 
+      professionalsWithCounts.map(p => `${p.id}: ${p.bookingCount} bookings`).join(', '));
+
+    // STEP 5: Find first available professional
+    console.log('🔍 Checking professional availability...');
+    for (const professional of professionalsWithCounts) {
+      const isAvailable = await isProfessionalAvailable(
+        professional.id, 
+        scheduledDate, 
+        durationMinutes
+      );
+      
+      if (isAvailable) {
+        console.log(`✅ Professional ${professional.id} is available`);
+        
+        // Assign this professional
+        const allocation = await assignProfessionalToBooking(newBookingId, professional.id);
+        
+        allocationResult = {
+          allocation_id: allocation.allocation_id,
+          professional_id: allocation.professional_id,
+          professional_name: professional.name || 'N/A',
+          assigned_at: allocation.assigned_at,
+          status: allocation.status
+        };
+        
+        assignedProfessional = professional;
+        console.log('✅ Professional assigned successfully with allocation ID:', allocation.allocation_id);
+        break;
+      } else {
+        console.log(`⏭️ Professional ${professional.id} is not available, checking next...`);
+      }
+    }
+
+    // STEP 6: If no professional was assigned, update booking status
+    if (!allocationResult) {
+      console.log('⚠️ All professionals are busy during the requested time');
+      await updateBookingStatus(newBookingId, 'No Professionals available at requested time');
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Booking saved but no professionals available at the requested time',
+        booking_id: newBookingId,
+        booking_status: 'No Professionals available at requested time',
+        professionals_checked: professionalsWithCounts.length,
+        data: {
+          booking_id: newBookingId,
+          customer_id: customer_id,
+          service_id: parseInt(service_id),
+          booking_status: 'No Professionals available at requested time',
+          scheduled_time: scheduledDate.toISOString(),
+          location_address: location_address,
+          LocationID: parseInt(LocationID),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+
+    // STEP 7: Update booking status to reflect professional assignment
+    await updateBookingStatus(newBookingId, 'Professional Assigned');
+    console.log('✅ Booking status updated to "Professional Assigned"');
+
+    // STEP 8: Return success response with professional assignment
     res.status(201).json({
       success: true,
-      message: 'Booking saved successfully',
+      message: 'Booking saved and professional assigned successfully',
       booking_id: newBookingId,
       data: {
         booking_id: newBookingId,
         customer_id: customer_id,
         service_id: parseInt(service_id),
-        booking_status: booking_status,
+        booking_status: 'Professional Assigned',
         scheduled_time: scheduledDate.toISOString(),
         location_address: location_address,
-        LocationID: LocationID ? parseInt(LocationID) : null,
+        LocationID: parseInt(LocationID),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
+      },
+      professional_allocation: allocationResult,
+      professional_details: {
+        id: assignedProfessional.id,
+        name: assignedProfessional.name || 'N/A',
+        total_bookings: assignedProfessional.bookingCount,
+        phone: assignedProfessional.phone || 'N/A',
+        email: assignedProfessional.email || 'N/A'
       }
     });
     
   } catch (err) {
-    console.error('❌ Database error in saveBookings:', err.message);
-    console.error('📋 Error details:', err);
+    console.error('❌ Error in saveBookings:', err.message);
+    console.error('📋 Error stack:', err.stack);
     
     res.status(500).json({ 
-      error: 'Database error',
+      error: 'Internal Server Error',
       message: 'Failed to save booking',
-      details: err.message,
-      tip: 'Check database connection and table structure'
+      details: err.message
     });
   }
 });
