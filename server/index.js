@@ -2325,19 +2325,19 @@ app.post('/api/saveBookings', async (req, res) => {
     // STEP 6: If no professional was assigned, update booking status
     if (!allocationResult) {
       console.log('⚠️ All professionals are busy during the requested time');
-      await updateBookingStatus(newBookingId, 'No Professionals available at requested time');
+      await updateBookingStatus(newBookingId, 'unavailable');
       
       return res.status(201).json({
         success: true,
         message: 'Booking saved but no professionals available at the requested time',
         booking_id: newBookingId,
-        booking_status: 'No Professionals available at requested time',
+        booking_status: 'unavailable',
         professionals_checked: professionalsWithCounts.length,
         data: {
           booking_id: newBookingId,
           customer_id: customer_id,
           service_id: parseInt(service_id),
-          booking_status: 'No Professionals available at requested time',
+          booking_status: 'unavailable',
           scheduled_time: scheduledDate.toISOString(),
           location_address: location_address,
           LocationID: parseInt(LocationID),
