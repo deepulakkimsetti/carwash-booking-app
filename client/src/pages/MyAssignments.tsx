@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Box, Typography, Card, CardContent, Snackbar, Alert, CircularProgress, Chip, Tabs, Tab, Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
+import { Container, Box, Typography, Card, CardContent, Snackbar, Alert, CircularProgress, Tabs, Tab, Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -42,25 +42,6 @@ const MyAssignments: React.FC = () => {
     } catch (error) {
       console.error('Error formatting date:', error);
       return { date: 'Invalid date', time: 'Invalid time' };
-    }
-  };
-
-  // Get status color based on booking status
-  const getStatusColor = (status: string) => {
-    const s = (status || '').toLowerCase();
-    switch (s) {
-      case 'pending':
-        return 'warning';
-      case 'assigned':
-        return 'info';
-      case 'in-progress':
-        return 'primary';
-      case 'completed':
-        return 'success';
-      case 'cancelled':
-        return 'error';
-      default:
-        return 'default';
     }
   };
 
@@ -281,11 +262,19 @@ const MyAssignments: React.FC = () => {
                       <Typography variant="h6" fontWeight={600}>
                         Booking #{assignment.booking_id}
                       </Typography>
-                      <Chip 
-                        label={assignment.booking_status} 
-                        color={getStatusColor(assignment.booking_status)}
-                        sx={{ fontWeight: 600 }}
-                      />
+                      <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel id={`status-label-${assignment.booking_id}`}>Status of job</InputLabel>
+                        <Select
+                          labelId={`status-label-${assignment.booking_id}`}
+                          value={assignment.booking_status || ''}
+                          label="Status of job"
+                          onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
+                          disabled={statusUpdatingId === assignment.booking_id}
+                        >
+                          <MenuItem value={"inprogress"}>inprogress</MenuItem>
+                          <MenuItem value={"completed"}>completed</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Box>
 
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
@@ -338,23 +327,10 @@ const MyAssignments: React.FC = () => {
                       </Typography>
                     </Box>
                     
-                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ textAlign: 'center', flex: 1 }}>
+                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ textAlign: 'center' }}>
                         Assigned On: {assignment.created_at ? new Date(assignment.created_at).toLocaleString() : '-'}
                       </Typography>
-                      <FormControl size="small" sx={{ minWidth: 160, textAlign: 'center' }}>
-                        <InputLabel id={`status-label-${assignment.booking_id}`}>Status of job</InputLabel>
-                        <Select
-                          labelId={`status-label-${assignment.booking_id}`}
-                          value={assignment.booking_status || ''}
-                          label="Status of job"
-                          onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
-                          disabled={statusUpdatingId === assignment.booking_id}
-                        >
-                          <MenuItem value={"inprogress"}>inprogress</MenuItem>
-                          <MenuItem value={"completed"}>completed</MenuItem>
-                        </Select>
-                      </FormControl>
                     </Box>
                   </CardContent>
                 </Card>
