@@ -33,9 +33,11 @@ const MyAssignments: React.FC = () => {
   // Helper function to format date and time from scheduled_time
   const formatDateTime = (scheduledTime: string) => {
     try {
-      const date = new Date(scheduledTime);
-      const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
-      const formattedTime = date.toTimeString().split(':').slice(0, 2).join(':'); // HH:MM
+      // Parse the datetime string directly without timezone conversion
+      const dateTimeParts = scheduledTime.split('T');
+      const formattedDate = dateTimeParts[0]; // YYYY-MM-DD
+      const timePart = dateTimeParts[1] || '';
+      const formattedTime = timePart.split(':').slice(0, 2).join(':'); // HH:MM
       return { date: formattedDate, time: formattedTime };
     } catch (error) {
       console.error('Error formatting date:', error);
