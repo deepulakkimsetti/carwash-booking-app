@@ -2802,7 +2802,7 @@ app.put('/api/updateBookingStatus', async (req, res) => {
     }
 
     // Optional: Validate against allowed status values
-    const allowedStatuses = ['pending', 'assigned', 'confirmed', 'in-progress', 'completed', 'cancelled', 'unavailable', 'not_serviceable'];
+    const allowedStatuses = ['pending', 'assigned', 'confirmed', 'inprogress', 'completed', 'cancelled', 'unavailable', 'not_serviceable'];
     if (!allowedStatuses.includes(booking_status.toLowerCase())) {
       return res.status(400).json({
         error: 'ValidationError',
