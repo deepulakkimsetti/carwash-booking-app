@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Box, Typography, Card, CardContent, Snackbar, Alert, CircularProgress, Chip } from '@mui/material';
+import { Container, Box, Typography, Card, CardContent, Snackbar, Alert, CircularProgress, Chip, Tabs, Tab, Select, MenuItem, FormControl, InputLabel, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Button } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,6 +26,9 @@ const MyAssignments: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openSuccess, setOpenSuccess] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; bookingId: string; newStatus: string }>({ open: false, bookingId: '', newStatus: '' });
 
   // Helper function to format date and time from scheduled_time
   const formatDateTime = (scheduledTime: string) => {
@@ -42,7 +45,8 @@ const MyAssignments: React.FC = () => {
 
   // Get status color based on booking status
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    const s = (status || '').toLowerCase();
+    switch (s) {
       case 'pending':
         return 'warning';
       case 'assigned':
@@ -58,7 +62,49 @@ const MyAssignments: React.FC = () => {
     }
   };
 
-  // Fetch assigned bookings for the professional
+  const handleStatusChange = (bookingId: string, newStatus: string) => {
+    // Show confirmation dialog if status is being changed to "completed"
+    if (newStatus.toLowerCase() === 'completed') {
+      setConfirmDialog({ open: true, bookingId, newStatus });
+    } else {
+      updateBookingStatus(bookingId, newStatus);
+    }
+  };
+
+  const handleConfirmStatusChange = () => {
+    updateBookingStatus(confirmDialog.bookingId, confirmDialog.newStatus);
+    setConfirmDialog({ open: false, bookingId: '', newStatus: '' });
+  };
+
+  const handleCancelStatusChange = () => {
+    setConfirmDialog({ open: false, bookingId: '', newStatus: '' });
+  };
+
+  const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    try {
+      setStatusUpdatingId(bookingId);
+
+      // Call backend endpoint to update booking status.
+      const resp = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/updateBookingStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: bookingId, booking_status: newStatus }),
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || 'Failed to update booking status');
+      }
+
+      // Optimistically update local state
+      setAssignments(prev => prev.map(a => a.booking_id === bookingId ? { ...a, booking_status: newStatus } : a));
+    } catch (err: any) {
+      console.error('Update status error:', err);
+      setError(err?.message || 'Failed to update status');
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };  // Fetch assigned bookings for the professional
   const fetchAssignments = async () => {
     if (!user) {
       setAssignments([]);
@@ -173,6 +219,14 @@ const MyAssignments: React.FC = () => {
           My Assignments
         </Typography>
 
+        {/* Tabs */}
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} centered>
+            <Tab label="Active Bookings" />
+            <Tab label="Completed Bookings" />
+          </Tabs>
+        </Box>
+
         {/* Loading State */}
         {loading && (
           <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px', mt: 4 }}>
@@ -201,7 +255,12 @@ const MyAssignments: React.FC = () => {
         {/* Assignments List */}
         {!loading && assignments.length > 0 && (
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', mt: 4 }}>
-            {assignments.map((assignment, idx) => {
+            {assignments
+              .filter(a => {
+                const isCompleted = (a.booking_status || '').toLowerCase() === 'completed';
+                return tabIndex === 1 ? isCompleted : !isCompleted;
+              })
+              .map((assignment, idx) => {
               const { date, time } = formatDateTime(assignment.scheduled_time);
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
@@ -210,11 +269,27 @@ const MyAssignments: React.FC = () => {
                       <Typography variant="h6" fontWeight={600}>
                         Booking #{assignment.booking_id}
                       </Typography>
-                      <Chip 
-                        label={assignment.booking_status} 
-                        color={getStatusColor(assignment.booking_status)}
-                        sx={{ fontWeight: 600 }}
-                      />
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        <Chip 
+                          label={assignment.booking_status} 
+                          color={getStatusColor(assignment.booking_status)}
+                          sx={{ fontWeight: 600 }}
+                        />
+
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                          <InputLabel id={`status-label-${assignment.booking_id}`}>Status of job</InputLabel>
+                          <Select
+                            labelId={`status-label-${assignment.booking_id}`}
+                            value={assignment.booking_status || ''}
+                            label="Status of job"
+                            onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
+                            disabled={statusUpdatingId === assignment.booking_id}
+                          >
+                            <MenuItem value={"inprogress"}>inprogress</MenuItem>
+                            <MenuItem value={"completed"}>completed</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Box>
                     </Box>
 
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
@@ -278,6 +353,31 @@ const MyAssignments: React.FC = () => {
             })}
           </Box>
         )}
+
+        {/* Confirmation Dialog */}
+        <Dialog
+          open={confirmDialog.open}
+          onClose={handleCancelStatusChange}
+          aria-labelledby="confirm-dialog-title"
+          aria-describedby="confirm-dialog-description"
+        >
+          <DialogTitle id="confirm-dialog-title">
+            Confirm Status Change
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText id="confirm-dialog-description">
+              Are you sure you want to mark this booking as completed? This action will update the booking status.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelStatusChange} color="secondary">
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmStatusChange} color="primary" variant="contained" autoFocus>
+              Confirm
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Container>
   );

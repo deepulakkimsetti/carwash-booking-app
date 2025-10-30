@@ -1235,6 +1235,151 @@ const simpleSwaggerSpec = {
         }
       }
     },
+    '/api/updateBookingStatus': {
+      put: {
+        summary: 'Update booking status',
+        description: 'Update the status of an existing booking',
+        tags: ['Bookings'],
+        requestBody: {
+          required: true,
+          description: 'Booking ID and new status',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['booking_id', 'booking_status'],
+                properties: {
+                  booking_id: {
+                    type: 'integer',
+                    description: 'Booking identifier',
+                    example: 1,
+                    minimum: 1
+                  },
+                  booking_status: {
+                    type: 'string',
+                    description: 'New booking status',
+                    example: 'confirmed',
+                    enum: ['pending', 'assigned', 'confirmed', 'in-progress', 'completed', 'cancelled', 'unavailable', 'not_serviceable']
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Booking status updated successfully',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: {
+                      type: 'boolean',
+                      example: true
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Booking status updated successfully'
+                    },
+                    data: {
+                      type: 'object',
+                      properties: {
+                        booking_id: {
+                          type: 'integer',
+                          example: 1
+                        },
+                        booking_status: {
+                          type: 'string',
+                          example: 'confirmed'
+                        },
+                        updated_at: {
+                          type: 'string',
+                          format: 'date-time',
+                          example: '2025-10-30T10:00:00.000Z'
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '400': {
+            description: 'Bad Request - Invalid input data',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'ValidationError'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Missing required fields'
+                    },
+                    details: {
+                      type: 'string',
+                      example: 'Both booking_id and booking_status are required'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '404': {
+            description: 'Booking not found',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'NotFound'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Booking not found'
+                    },
+                    details: {
+                      type: 'string',
+                      example: 'No booking found with ID: 1'
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Internal Server Error',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Internal Server Error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Failed to update booking status'
+                    },
+                    details: {
+                      type: 'string',
+                      example: 'Database connection failed'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/api/getProfessionalAssignments': {
       get: {
         summary: 'Get professional assignments',
@@ -2584,6 +2729,132 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
           booking_status: 'pending'
         }
       ]
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/updateBookingStatus:
+ *   put:
+ *     summary: Update booking status
+ *     tags: [Bookings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [booking_id, booking_status]
+ *             properties:
+ *               booking_id:
+ *                 type: integer
+ *                 description: Booking identifier
+ *                 example: 1
+ *               booking_status:
+ *                 type: string
+ *                 description: New booking status
+ *                 example: 'confirmed'
+ *                 enum: ['pending', 'assigned', 'confirmed', 'in-progress', 'completed', 'cancelled', 'unavailable', 'not_serviceable']
+ *     responses:
+ *       200:
+ *         description: Booking status updated successfully
+ *       400:
+ *         description: Invalid input data
+ *       404:
+ *         description: Booking not found
+ *       500:
+ *         description: Database error
+ */
+app.put('/api/updateBookingStatus', async (req, res) => {
+  console.log('🔄 /api/updateBookingStatus route hit at:', new Date().toISOString());
+  console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const { booking_id, booking_status } = req.body;
+    
+    // Validate required fields
+    if (!booking_id || !booking_status) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Missing required fields',
+        details: 'Both booking_id and booking_status are required',
+        requiredFields: ['booking_id', 'booking_status']
+      });
+    }
+
+    // Validate booking_id is a number
+    if (isNaN(booking_id)) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid booking_id',
+        details: 'booking_id must be a valid number'
+      });
+    }
+
+    // Validate booking_status is a string
+    if (typeof booking_status !== 'string' || booking_status.trim().length === 0) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid booking_status',
+        details: 'booking_status must be a non-empty string'
+      });
+    }
+
+    // Optional: Validate against allowed status values
+    const allowedStatuses = ['pending', 'assigned', 'confirmed', 'in-progress', 'completed', 'cancelled', 'unavailable', 'not_serviceable'];
+    if (!allowedStatuses.includes(booking_status.toLowerCase())) {
+      return res.status(400).json({
+        error: 'ValidationError',
+        message: 'Invalid booking_status value',
+        details: `booking_status must be one of: ${allowedStatuses.join(', ')}`,
+        providedValue: booking_status
+      });
+    }
+
+    // Check if booking exists
+    const checkRequest = new sql.Request();
+    checkRequest.input('booking_id', sql.BigInt, parseInt(booking_id));
+    const checkResult = await checkRequest.query('SELECT booking_id FROM Bookings WHERE booking_id = @booking_id');
+    
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        error: 'NotFound',
+        message: 'Booking not found',
+        details: `No booking found with ID: ${booking_id}`
+      });
+    }
+
+    // Update booking status
+    const request = new sql.Request();
+    request.input('booking_id', sql.BigInt, parseInt(booking_id));
+    request.input('booking_status', sql.VarChar, booking_status);
+    request.input('updated_at', sql.DateTime, new Date());
+    
+    await request.query(`
+      UPDATE Bookings 
+      SET booking_status = @booking_status, updated_at = @updated_at
+      WHERE booking_id = @booking_id
+    `);
+    
+    console.log(`✅ Booking ${booking_id} status updated to: ${booking_status}`);
+    
+    res.json({
+      success: true,
+      message: 'Booking status updated successfully',
+      data: {
+        booking_id: parseInt(booking_id),
+        booking_status: booking_status,
+        updated_at: new Date().toISOString()
+      }
+    });
+    
+  } catch (err) {
+    console.error('❌ Error in updateBookingStatus:', err.message);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to update booking status',
+      details: err.message
     });
   }
 });
