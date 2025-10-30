@@ -271,7 +271,7 @@ const MyAssignments: React.FC = () => {
                           onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
                           disabled={statusUpdatingId === assignment.booking_id}
                         >
-                          <MenuItem value={"in_progress"}>in_progress</MenuItem>
+                          <MenuItem value={"inprogress"}>in_progress</MenuItem>
                           <MenuItem value={"completed"}>completed</MenuItem>
                         </Select>
                       </FormControl>
