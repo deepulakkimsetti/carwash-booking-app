@@ -69,7 +69,7 @@ const MyAssignments: React.FC = () => {
 
       // Call backend endpoint to update booking status.
       const resp = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/updateBookingStatus', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ booking_id: bookingId, booking_status: newStatus }),
       });
@@ -271,7 +271,7 @@ const MyAssignments: React.FC = () => {
                           onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
                           disabled={statusUpdatingId === assignment.booking_id}
                         >
-                          <MenuItem value={"inprogress"}>inprogress</MenuItem>
+                          <MenuItem value={"in_progress"}>in_progress</MenuItem>
                           <MenuItem value={"completed"}>completed</MenuItem>
                         </Select>
                       </FormControl>
