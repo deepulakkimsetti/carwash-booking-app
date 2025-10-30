@@ -270,9 +270,14 @@ const MyAssignments: React.FC = () => {
                           label="Status of job"
                           onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
                           disabled={statusUpdatingId === assignment.booking_id}
+                          displayEmpty={false}
                         >
-                          <MenuItem value={"inprogress"}>in_progress</MenuItem>
-                          <MenuItem value={"completed"}>completed</MenuItem>
+                          <MenuItem value="pending">pending</MenuItem>
+                          <MenuItem value="assigned">assigned</MenuItem>
+                          <MenuItem value="inprogress">inprogress</MenuItem>
+                          <MenuItem value="in-progress">in-progress</MenuItem>
+                          <MenuItem value="completed">completed</MenuItem>
+                          <MenuItem value="cancelled">cancelled</MenuItem>
                         </Select>
                       </FormControl>
                     </Box>
