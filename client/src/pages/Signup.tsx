@@ -22,8 +22,6 @@ const Signup: React.FC = () => {
   const [nearestLocations, setNearestLocations] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [openError, setOpenError] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [openSuccess, setOpenSuccess] = useState(false);
   const navigate = useNavigate();
 
   // Handler for role change
@@ -42,32 +40,11 @@ const Signup: React.FC = () => {
     setNearestLocations([]); // Reset locations when city changes
   };
 
-  // Handler for success Snackbar close
-  const handleSuccessClose = () => {
-    setOpenSuccess(false);
-    const userRole = role; // Store role before clearing
-    setFullName('');
-    setPhone('');
-    setAddress('');
-    setEmail('');
-    setPassword('');
-    setRole('customer');
-    setCity('');
-    setNearestLocations([]);
-    setTimeout(() => {
-      // Route based on user role
-      if (userRole === 'professional') {
-        navigate('/my-assignments', { state: { signupSuccess: true } });
-      } else {
-        navigate('/service-booking', { state: { signupSuccess: true } });
-      }
-    }, 500); // Delay navigation to show Snackbar
-  };
+
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     if (!fullName || !phone || !address || !email || !password) {
       setError('All fields are required.');
       setOpenError(true);
@@ -101,9 +78,16 @@ const Signup: React.FC = () => {
       }
       
       await set(ref(db, 'users/' + user.uid), userData);
-      setSuccess('Signup successful! You can now log in.');
-      setOpenSuccess(true);
-      // Do not clear form or navigate yet; wait for Snackbar close
+      
+      // User is already logged in after createUserWithEmailAndPassword
+      // Navigate directly based on role
+      setTimeout(() => {
+        if (role === 'professional') {
+          navigate('/my-assignments', { state: { signupSuccess: true } });
+        } else {
+          navigate('/service-booking', { state: { signupSuccess: true } });
+        }
+      }, 1200);
     } catch (err: any) {
       setError(err.message);
       setOpenError(true);
@@ -260,21 +244,6 @@ const Signup: React.FC = () => {
               {error}
             </Alert>
           </Snackbar>
-          <Snackbar
-            open={openSuccess}
-            autoHideDuration={4000}
-            onClose={handleSuccessClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert onClose={handleSuccessClose} severity="success" sx={{ width: '100%' }}>
-              {success}
-            </Alert>
-          </Snackbar>
-          {success && (
-            <Typography color="success.main" variant="body2" sx={{ mt: 1 }}>
-              {success}
-            </Typography>
-          )}
           <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
             Signup
           </Button>
