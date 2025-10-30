@@ -2034,18 +2034,18 @@ app.post('/api/saveBookings', async (req, res) => {
     if (professionals.length === 0) {
       // STEP 4a: No professionals available for this location
       console.log('⚠️ No professionals available for this location');
-      await updateBookingStatus(newBookingId, 'No Professionals available in your area');
+      await updateBookingStatus(newBookingId, 'not_serviceable');
       
       return res.status(201).json({
         success: true,
-        message: 'Booking saved but no professionals available in your area',
+        message: 'Booking saved but area is not serviceable',
         booking_id: newBookingId,
-        booking_status: 'No Professionals available in your area',
+        booking_status: 'not_serviceable',
         data: {
           booking_id: newBookingId,
           customer_id: customer_id,
           service_id: parseInt(service_id),
-          booking_status: 'No Professionals available in your area',
+          booking_status: 'not_serviceable',
           scheduled_time: scheduledDate.toISOString(),
           location_address: location_address,
           LocationID: parseInt(LocationID),

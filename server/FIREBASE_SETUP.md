@@ -115,7 +115,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/firebase-service-account.json"
    - Check for overlapping bookings
 6. **Assign first available professional** to the booking
 7. **If no professionals available**:
-   - Update booking status to `'No Professionals available in your area'` OR
+   - Update booking status to `'not_serviceable'` OR
    - Update booking status to `'No Professionals available at requested time'`
 
 ### Response Examples
@@ -154,17 +154,17 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/firebase-service-account.json"
 }
 ```
 
-#### No Professionals in Area
+#### Area Not Serviceable
 ```json
 {
   "success": true,
-  "message": "Booking saved but no professionals available in your area",
+  "message": "Booking saved but area is not serviceable",
   "booking_id": 1002,
-  "booking_status": "No Professionals available in your area",
+  "booking_status": "not_serviceable",
   "data": {
     "booking_id": 1002,
     "customer_id": "CUST002",
-    "booking_status": "No Professionals available in your area",
+    "booking_status": "not_serviceable",
     ...
   }
 }
