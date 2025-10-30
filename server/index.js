@@ -1460,15 +1460,11 @@ async function isProfessionalAvailable(professionalId, scheduledTime, durationMi
         AND pa.status IN ('assigned', 'confirmed')
         AND b.booking_status NOT IN ('cancelled', 'completed')
         AND (
-          -- Check if new booking overlaps with existing bookings
-          (b.scheduled_time <= @scheduled_time AND 
-           DATEADD(MINUTE, s.duration_minutes, b.scheduled_time) > @scheduled_time)
-          OR
-          (b.scheduled_time < @end_time AND 
-           DATEADD(MINUTE, s.duration_minutes, b.scheduled_time) >= @end_time)
-          OR
-          (b.scheduled_time >= @scheduled_time AND 
-           DATEADD(MINUTE, s.duration_minutes, b.scheduled_time) <= @end_time)
+          -- Two bookings overlap if:
+          -- New booking starts before existing booking ends AND
+          -- New booking ends after existing booking starts
+          @scheduled_time < DATEADD(MINUTE, s.duration_minutes, b.scheduled_time)
+          AND @end_time > b.scheduled_time
         )
     `);
     
@@ -2328,7 +2324,7 @@ app.get('/api/getUserBookingDetails', async (req, res) => {
       FROM [dbo].[Services] as s 
       INNER JOIN [dbo].[Bookings] as b ON s.service_id = b.service_id 
       WHERE b.customer_id = @customer_id
-      ORDER BY b.scheduled_time DESC
+      ORDER BY b.scheduled_time ASC
     `);
     
     console.log('✅ Query successful, returning', result.recordset.length, 'booking(s) for customer_id:', customer_id);
