@@ -1,18 +1,31 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Box, Typography, TextField, Button, Snackbar, Alert } from '@mui/material';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { ref, get } from 'firebase/database';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [openError, setOpenError] = useState(false);
-  // Success Snackbar state removed
+  const [successMessage, setSuccessMessage] = useState('');
+  const [openSuccess, setOpenSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if user came from signup/capture-details
+  useEffect(() => {
+    const state = location.state as { signupSuccess?: boolean; message?: string } | null;
+    if (state?.signupSuccess && state?.message) {
+      setSuccessMessage(state.message);
+      setOpenSuccess(true);
+      // Clear the state to prevent message from showing again on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +127,11 @@ const Login: React.FC = () => {
               {error}
             </Alert>
           </Snackbar>
-          {/* Success Snackbar removed to avoid duplicate popup. Popup will show on ServiceBooking page only. */}
+          <Snackbar open={openSuccess} autoHideDuration={6000} onClose={() => setOpenSuccess(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+            <Alert onClose={() => setOpenSuccess(false)} severity="success" sx={{ width: '100%' }}>
+              {successMessage}
+            </Alert>
+          </Snackbar>
           <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
             Login
           </Button>

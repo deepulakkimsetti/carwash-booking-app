@@ -79,15 +79,13 @@ const Signup: React.FC = () => {
       
       await set(ref(db, 'users/' + user.uid), userData);
       
-      // User is already logged in after createUserWithEmailAndPassword
-      // Navigate directly based on role
+      // Logout the user after signup to require login
+      await auth.signOut();
+      
+      // Navigate to login page
       setTimeout(() => {
-        if (role === 'professional') {
-          navigate('/my-assignments', { state: { signupSuccess: true } });
-        } else {
-          navigate('/service-booking', { state: { signupSuccess: true } });
-        }
-      }, 1200);
+        navigate('/login', { state: { signupSuccess: true, message: 'Signup successful! Please login to continue.' } });
+      }, 500);
     } catch (err: any) {
       setError(err.message);
       setOpenError(true);

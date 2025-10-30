@@ -132,7 +132,7 @@ const CaptureDetails: React.FC = () => {
   const handleSuccessClose = () => {
     setOpenSuccess(false);
     setTimeout(() => {
-      navigate('/service-booking');
+      navigate('/login', { state: { signupSuccess: true, message: 'Details captured successfully! Please login to continue.' } });
     }, 500);
   };
 
@@ -178,7 +178,11 @@ const CaptureDetails: React.FC = () => {
       }
       
       await set(ref(db, 'users/' + currentUser.uid), userData);
-      setSuccess('Details captured successfully!');
+      
+      // Logout user after capturing details
+      await auth.signOut();
+      
+      setSuccess('Details captured successfully! Please login to continue.');
       setOpenSuccess(true);
     } catch (err: any) {
       setError(err.message);
