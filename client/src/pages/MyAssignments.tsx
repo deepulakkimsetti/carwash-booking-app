@@ -252,14 +252,27 @@ const MyAssignments: React.FC = () => {
         )}
 
         {/* Assignments List */}
-        {!loading && assignments.length > 0 && (
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', mt: 4 }}>
-            {assignments
-              .filter(a => {
-                const isCompleted = (a.booking_status || '').toLowerCase() === 'completed';
-                return tabIndex === 1 ? isCompleted : !isCompleted;
-              })
-              .map((assignment, idx) => {
+        {!loading && assignments.length > 0 && (() => {
+          const filteredAssignments = assignments.filter(a => {
+            const isCompleted = (a.booking_status || '').toLowerCase() === 'completed';
+            return tabIndex === 1 ? isCompleted : !isCompleted;
+          });
+
+          if (filteredAssignments.length === 0) {
+            return (
+              <Box sx={{ width: '100%', mt: 4 }}>
+                <Typography variant="h6" color="text.secondary" align="center">
+                  {tabIndex === 1 
+                    ? 'No completed bookings yet. Completed assignments will appear here.' 
+                    : 'No active bookings at the moment.'}
+                </Typography>
+              </Box>
+            );
+          }
+
+          return (
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', mt: 4 }}>
+              {filteredAssignments.map((assignment, idx) => {
               const { date, time } = formatDateTime(assignment.scheduled_time);
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
@@ -268,27 +281,11 @@ const MyAssignments: React.FC = () => {
                       <Typography variant="h6" fontWeight={600}>
                         Booking #{assignment.booking_id}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        <Chip 
-                          label={assignment.booking_status} 
-                          color={getStatusColor(assignment.booking_status)}
-                          sx={{ fontWeight: 600 }}
-                        />
-
-                        <FormControl size="small" sx={{ minWidth: 160 }}>
-                          <InputLabel id={`status-label-${assignment.booking_id}`}>Status of job</InputLabel>
-                          <Select
-                            labelId={`status-label-${assignment.booking_id}`}
-                            value={assignment.booking_status || ''}
-                            label="Status of job"
-                            onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
-                            disabled={statusUpdatingId === assignment.booking_id}
-                          >
-                            <MenuItem value={"inprogress"}>inprogress</MenuItem>
-                            <MenuItem value={"completed"}>completed</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Box>
+                      <Chip 
+                        label={assignment.booking_status} 
+                        color={getStatusColor(assignment.booking_status)}
+                        sx={{ fontWeight: 600 }}
+                      />
                     </Box>
 
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
@@ -341,17 +338,31 @@ const MyAssignments: React.FC = () => {
                       </Typography>
                     </Box>
                     
-                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee' }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ textAlign: 'center' }}>
+                    <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="subtitle1" fontWeight={600}>
                         Assigned On: {assignment.created_at ? new Date(assignment.created_at).toLocaleString() : '-'}
                       </Typography>
+                      <FormControl size="small" sx={{ minWidth: 160 }}>
+                        <InputLabel id={`status-label-${assignment.booking_id}`}>Status of job</InputLabel>
+                        <Select
+                          labelId={`status-label-${assignment.booking_id}`}
+                          value={assignment.booking_status || ''}
+                          label="Status of job"
+                          onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
+                          disabled={statusUpdatingId === assignment.booking_id}
+                        >
+                          <MenuItem value={"inprogress"}>inprogress</MenuItem>
+                          <MenuItem value={"completed"}>completed</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Box>
                   </CardContent>
                 </Card>
               );
-            })}
-          </Box>
-        )}
+              })}
+            </Box>
+          );
+        })()}
 
         {/* Confirmation Dialog */}
         <Dialog
