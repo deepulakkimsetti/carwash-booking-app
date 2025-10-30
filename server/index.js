@@ -1378,20 +1378,28 @@ connectWithRetry().catch(err => {
  */
 async function getProfessionalsByLocation(locationId) {
   try {
-    const professionalsRef = firebaseDB.ref('professionals');
-    const snapshot = await professionalsRef.once('value');
+    const usersRef = firebaseDB.ref('users');
+    const snapshot = await usersRef.once('value');
     const professionals = [];
     
     snapshot.forEach((childSnapshot) => {
-      const professional = childSnapshot.val();
-      const professionalId = childSnapshot.key;
+      const user = childSnapshot.val();
+      const userId = childSnapshot.key;
       
-      // Check if nearestLocations array contains the locationId
-      if (professional.nearestLocations && Array.isArray(professional.nearestLocations)) {
-        if (professional.nearestLocations.includes(locationId)) {
+      // Check if nearestLocations exists and contains the locationId
+      if (user.nearestLocations) {
+        // Convert nearestLocations object to array of values
+        const locationIds = Object.values(user.nearestLocations);
+        
+        if (locationIds.includes(locationId)) {
           professionals.push({
-            id: professionalId,
-            ...professional
+            id: userId,
+            name: user.fullName || 'N/A',
+            phone: user.phone || 'N/A',
+            email: user.email || 'N/A',
+            address: user.address || 'N/A',
+            city: user.city || 'N/A',
+            nearestLocations: locationIds
           });
         }
       }
