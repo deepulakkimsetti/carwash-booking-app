@@ -2137,8 +2137,8 @@ app.post('/api/saveBookings', async (req, res) => {
     }
 
     // STEP 7: Update booking status to reflect professional assignment
-    await updateBookingStatus(newBookingId, 'Professional Assigned');
-    console.log('✅ Booking status updated to "Professional Assigned"');
+    await updateBookingStatus(newBookingId, 'assigned');
+    console.log('✅ Booking status updated to "assigned"');
 
     // STEP 8: Return success response with professional assignment
     res.status(201).json({
@@ -2149,7 +2149,7 @@ app.post('/api/saveBookings', async (req, res) => {
         booking_id: newBookingId,
         customer_id: customer_id,
         service_id: parseInt(service_id),
-        booking_status: 'Professional Assigned',
+        booking_status: 'assigned',
         scheduled_time: scheduledDate.toISOString(),
         location_address: location_address,
         LocationID: parseInt(LocationID),
