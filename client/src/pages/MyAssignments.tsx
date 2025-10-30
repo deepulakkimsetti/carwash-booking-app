@@ -46,8 +46,9 @@ const MyAssignments: React.FC = () => {
   };
 
   const handleStatusChange = (bookingId: string, newStatus: string) => {
-    // Show confirmation dialog if status is being changed to "completed"
-    if (newStatus.toLowerCase() === 'completed') {
+    // Show confirmation dialog if status is being changed to "completed" or "cancelled"
+    const status = newStatus.toLowerCase();
+    if (status === 'completed' || status === 'cancelled') {
       setConfirmDialog({ open: true, bookingId, newStatus });
     } else {
       updateBookingStatus(bookingId, newStatus);
@@ -204,6 +205,7 @@ const MyAssignments: React.FC = () => {
           <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} centered>
             <Tab label="Active Bookings" />
             <Tab label="Completed Bookings" />
+            <Tab label="Cancelled Bookings" />
           </Tabs>
         </Box>
 
@@ -235,8 +237,14 @@ const MyAssignments: React.FC = () => {
         {/* Assignments List */}
         {!loading && assignments.length > 0 && (() => {
           const filteredAssignments = assignments.filter(a => {
-            const isCompleted = (a.booking_status || '').toLowerCase() === 'completed';
-            return tabIndex === 1 ? isCompleted : !isCompleted;
+            const status = (a.booking_status || '').toLowerCase();
+            if (tabIndex === 1) {
+              return status === 'completed';
+            } else if (tabIndex === 2) {
+              return status === 'cancelled';
+            } else {
+              return status !== 'completed' && status !== 'cancelled';
+            }
           });
 
           if (filteredAssignments.length === 0) {
@@ -245,6 +253,8 @@ const MyAssignments: React.FC = () => {
                 <Typography variant="h6" color="text.secondary" align="center">
                   {tabIndex === 1 
                     ? 'No completed bookings yet. Completed assignments will appear here.' 
+                    : tabIndex === 2 
+                    ? 'No cancelled bookings. Cancelled assignments will appear here.'
                     : 'No active bookings at the moment.'}
                 </Typography>
               </Box>
@@ -255,6 +265,9 @@ const MyAssignments: React.FC = () => {
             <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', mt: 4 }}>
               {filteredAssignments.map((assignment, idx) => {
               const { date, time } = formatDateTime(assignment.scheduled_time);
+              const status = (assignment.booking_status || '').toLowerCase();
+              const isDropdownDisabled = status === 'completed' || status === 'cancelled' || statusUpdatingId === assignment.booking_id;
+              
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
@@ -269,13 +282,11 @@ const MyAssignments: React.FC = () => {
                           value={assignment.booking_status || ''}
                           label="Status of job"
                           onChange={(e) => handleStatusChange(assignment.booking_id, e.target.value as string)}
-                          disabled={statusUpdatingId === assignment.booking_id}
+                          disabled={isDropdownDisabled}
                           displayEmpty={false}
                         >
-                          <MenuItem value="pending">pending</MenuItem>
                           <MenuItem value="assigned">assigned</MenuItem>
                           <MenuItem value="inprogress">inprogress</MenuItem>
-                          <MenuItem value="in-progress">in-progress</MenuItem>
                           <MenuItem value="completed">completed</MenuItem>
                           <MenuItem value="cancelled">cancelled</MenuItem>
                         </Select>
@@ -357,7 +368,9 @@ const MyAssignments: React.FC = () => {
           </DialogTitle>
           <DialogContent>
             <DialogContentText id="confirm-dialog-description">
-              Are you sure you want to mark this booking as completed? This action will update the booking status.
+              {confirmDialog.newStatus.toLowerCase() === 'completed' 
+                ? 'Are you sure you want to mark this booking as completed? This action will update the booking status.'
+                : 'Are you sure you want to cancel this booking? This action will update the booking status.'}
             </DialogContentText>
           </DialogContent>
           <DialogActions>
