@@ -21,7 +21,7 @@ const CaptureDetails: React.FC = () => {
   const [address, setAddress] = useState('');
   const [role, setRole] = useState('customer');
   const [city, setCity] = useState('');
-  const [nearestLocations, setNearestLocations] = useState<string[]>([]);
+  const [nearestLocations, setNearestLocations] = useState<number[]>([]); // Store LocationIDs instead of names
   const [error, setError] = useState('');
   const [openError, setOpenError] = useState(false);
   const [success, setSuccess] = useState('');
@@ -289,10 +289,16 @@ const CaptureDetails: React.FC = () => {
                       value={nearestLocations}
                       onChange={(e) => {
                         const value = e.target.value;
-                        setNearestLocations(typeof value === 'string' ? value.split(',') : value);
+                        setNearestLocations(typeof value === 'string' ? value.split(',').map(Number) : value);
                       }}
                       input={<OutlinedInput label="Select Nearest Locations" />}
-                      renderValue={(selected) => selected.join(', ')}
+                      renderValue={(selected) => {
+                        // Convert location IDs to location names for display
+                        return selected
+                          .map(id => locations.find(loc => loc.LocationID === id)?.LocationName)
+                          .filter(name => name)
+                          .join(', ');
+                      }}
                       disabled={!city || loadingLocations}
                     >
                       {loadingLocations ? (
@@ -302,8 +308,8 @@ const CaptureDetails: React.FC = () => {
                         </MenuItem>
                       ) : (
                         locations.map((location) => (
-                          <MenuItem key={location.LocationID} value={location.LocationName}>
-                            <Checkbox checked={nearestLocations.indexOf(location.LocationName) > -1} />
+                          <MenuItem key={location.LocationID} value={location.LocationID}>
+                            <Checkbox checked={nearestLocations.indexOf(location.LocationID) > -1} />
                             <ListItemText primary={location.LocationName} />
                           </MenuItem>
                         ))
