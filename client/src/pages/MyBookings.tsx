@@ -181,7 +181,7 @@ const MyBookings: React.FC = () => {
             {bookings.map((booking, idx) => {
               const { date, time } = formatDateTime(booking.scheduled_time);
               return (
-                <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
+                <Card key={idx} sx={{ width: { xs: '100%', sm: '95%', md: '90%' }, minWidth: '1000px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
