@@ -339,10 +339,10 @@ const MyAssignments: React.FC = () => {
                     </Box>
                     
                     <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="subtitle1" fontWeight={600}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ textAlign: 'center', flex: 1 }}>
                         Assigned On: {assignment.created_at ? new Date(assignment.created_at).toLocaleString() : '-'}
                       </Typography>
-                      <FormControl size="small" sx={{ minWidth: 160 }}>
+                      <FormControl size="small" sx={{ minWidth: 160, textAlign: 'center' }}>
                         <InputLabel id={`status-label-${assignment.booking_id}`}>Status of job</InputLabel>
                         <Select
                           labelId={`status-label-${assignment.booking_id}`}
