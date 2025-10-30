@@ -22,8 +22,20 @@ const firebaseConfig = {
 // Initialize Firebase (only once)
 if (!admin.apps.length) {
   try {
+    let credential;
+    
+    // Check if service account JSON is provided via environment variable
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      console.log('🔑 Using Firebase service account from environment variable');
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      credential = admin.credential.cert(serviceAccount);
+    } else {
+      console.log('🔑 Using Firebase application default credentials');
+      credential = admin.credential.applicationDefault();
+    }
+    
     admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+      credential: credential,
       databaseURL: firebaseConfig.databaseURL
     });
     console.log('✅ Firebase Admin SDK initialized successfully');
