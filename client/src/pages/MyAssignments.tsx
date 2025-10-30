@@ -116,11 +116,8 @@ const MyAssignments: React.FC = () => {
     setError(null);
 
     try {
-      // Convert Firebase UID to consistent numeric ID
-      const professionalId = Math.abs(user.uid.split('').reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-      }, 0));
+      // Use Firebase UID (alphanumeric) directly as professional identifier
+      const professionalId = encodeURIComponent(user.uid);
 
       const response = await fetch(
         `https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getProfessionalAssignments?professional_id=${professionalId}`,
