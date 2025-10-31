@@ -4,6 +4,7 @@ const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 const cors = require('cors');
 const admin = require('firebase-admin');
+const emailService = require('./emailService');
 
 const app = express();
 
@@ -2083,7 +2084,9 @@ app.post('/api/saveBookings', async (req, res) => {
       booking_status = 'pending', 
       scheduled_time, 
       location_address,
-      LocationID 
+      LocationID,
+      customer_email,
+      customer_name
     } = req.body;
     
     // Validate required fields (now LocationID is required for professional assignment)
@@ -2137,11 +2140,11 @@ app.post('/api/saveBookings', async (req, res) => {
       });
     }
 
-    // STEP 1: Get service duration for availability check
-    console.log('🔍 Fetching service duration...');
+    // STEP 1: Get service details for availability check and email
+    console.log('🔍 Fetching service details...');
     const serviceRequest = new sql.Request();
     serviceRequest.input('service_id', sql.BigInt, parseInt(service_id));
-    const serviceResult = await serviceRequest.query('SELECT duration_minutes FROM Services WHERE service_id = @service_id');
+    const serviceResult = await serviceRequest.query('SELECT service_name, duration_minutes, base_price FROM Services WHERE service_id = @service_id');
     
     if (serviceResult.recordset.length === 0) {
       return res.status(404).json({
@@ -2266,6 +2269,26 @@ app.post('/api/saveBookings', async (req, res) => {
       console.log('⚠️ All professionals are busy during the requested time');
       await updateBookingStatus(newBookingId, 'unavailable');
       
+      // Send email notification about unavailability
+      if (customer_email) {
+        emailService.sendBookingConfirmationEmail({
+          customer_email: customer_email,
+          customer_name: customer_name,
+          booking_id: newBookingId,
+          service_name: serviceResult.recordset[0].service_name || 'Car Wash Service',
+          car_type: 'N/A',
+          scheduled_time: scheduledDate.toISOString(),
+          location_address: location_address,
+          base_price: serviceResult.recordset[0].base_price || 0,
+          duration_minutes: durationMinutes,
+          booking_status: 'unavailable',
+          professional_name: null,
+          professional_phone: null,
+          professional_email: null
+        }).then(() => console.log('✅ Unavailability email sent'))
+          .catch(err => console.error('❌ Error sending unavailability email:', err.message));
+      }
+      
       return res.status(201).json({
         success: true,
         message: 'Booking saved but no professionals available at the requested time',
@@ -2290,7 +2313,48 @@ app.post('/api/saveBookings', async (req, res) => {
     await updateBookingStatus(newBookingId, 'assigned');
     console.log('✅ Booking status updated to "assigned"');
 
-    // STEP 8: Return success response with professional assignment
+    // STEP 8: Send email notifications (non-blocking)
+    if (customer_email) {
+      console.log('📧 Sending email notifications...');
+      
+      // Send confirmation email to customer
+      emailService.sendBookingConfirmationEmail({
+        customer_email: customer_email,
+        customer_name: customer_name,
+        booking_id: newBookingId,
+        service_name: serviceResult.recordset[0].service_name || 'Car Wash Service',
+        car_type: 'N/A', // Will be fetched if needed
+        scheduled_time: scheduledDate.toISOString(),
+        location_address: location_address,
+        base_price: serviceResult.recordset[0].base_price || 0,
+        duration_minutes: durationMinutes,
+        booking_status: 'assigned',
+        professional_name: assignedProfessional.name,
+        professional_phone: assignedProfessional.phone,
+        professional_email: assignedProfessional.email
+      }).then(() => console.log('✅ Customer confirmation email sent'))
+        .catch(err => console.error('❌ Error sending customer email:', err.message));
+      
+      // Send assignment notification to professional
+      if (assignedProfessional.email) {
+        emailService.sendProfessionalAssignmentEmail({
+          professional_email: assignedProfessional.email,
+          professional_name: assignedProfessional.name,
+          booking_id: newBookingId,
+          customer_name: customer_name,
+          service_name: serviceResult.recordset[0].service_name || 'Car Wash Service',
+          car_type: 'N/A',
+          scheduled_time: scheduledDate.toISOString(),
+          location_address: location_address,
+          duration_minutes: durationMinutes
+        }).then(() => console.log('✅ Professional assignment email sent'))
+          .catch(err => console.error('❌ Error sending professional email:', err.message));
+      }
+    } else {
+      console.log('⚠️ No customer email provided, skipping email notifications');
+    }
+
+    // STEP 9: Return success response with professional assignment
     res.status(201).json({
       success: true,
       message: 'Booking saved and professional assigned successfully',
@@ -2565,7 +2629,7 @@ app.put('/api/updateBookingStatus', async (req, res) => {
   console.log('📝 Request body:', JSON.stringify(req.body, null, 2));
   
   try {
-    const { booking_id, booking_status } = req.body;
+    const { booking_id, booking_status, customer_email, customer_name } = req.body;
     
     // Validate required fields
     if (!booking_id || !booking_status) {
@@ -2606,10 +2670,19 @@ app.put('/api/updateBookingStatus', async (req, res) => {
       });
     }
 
-    // Check if booking exists
+    // Check if booking exists and get current booking details
     const checkRequest = new sql.Request();
     checkRequest.input('booking_id', sql.BigInt, parseInt(booking_id));
-    const checkResult = await checkRequest.query('SELECT booking_id FROM Bookings WHERE booking_id = @booking_id');
+    const checkResult = await checkRequest.query(`
+      SELECT 
+        b.booking_id, 
+        b.booking_status as old_status, 
+        b.scheduled_time,
+        s.service_name
+      FROM Bookings b
+      INNER JOIN Services s ON b.service_id = s.service_id
+      WHERE b.booking_id = @booking_id
+    `);
     
     if (checkResult.recordset.length === 0) {
       return res.status(404).json({
@@ -2618,6 +2691,9 @@ app.put('/api/updateBookingStatus', async (req, res) => {
         details: `No booking found with ID: ${booking_id}`
       });
     }
+    
+    const bookingDetails = checkResult.recordset[0];
+    const oldStatus = bookingDetails.old_status;
 
     // Update booking status
     const request = new sql.Request();
@@ -2633,11 +2709,27 @@ app.put('/api/updateBookingStatus', async (req, res) => {
     
     console.log(`✅ Booking ${booking_id} status updated to: ${booking_status}`);
     
+    // Send email notification about status update (non-blocking)
+    if (customer_email && oldStatus !== booking_status) {
+      console.log('📧 Sending status update email...');
+      emailService.sendStatusUpdateEmail({
+        customer_email: customer_email,
+        customer_name: customer_name,
+        booking_id: parseInt(booking_id),
+        old_status: oldStatus,
+        new_status: booking_status,
+        service_name: bookingDetails.service_name,
+        scheduled_time: bookingDetails.scheduled_time
+      }).then(() => console.log('✅ Status update email sent'))
+        .catch(err => console.error('❌ Error sending status update email:', err.message));
+    }
+    
     res.json({
       success: true,
       message: 'Booking status updated successfully',
       data: {
         booking_id: parseInt(booking_id),
+        old_status: oldStatus,
         booking_status: booking_status,
         updated_at: new Date().toISOString()
       }
