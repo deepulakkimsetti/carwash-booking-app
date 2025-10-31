@@ -1886,35 +1886,7 @@ async function updateBookingStatus(bookingId, status) {
   }
 }
 
-// Table schemas
-const tableSchemas = {
-  Bookings: ['booking_id','customer_id','service_id','booking_status','scheduled_time','location_address','created_at','updated_at'],
-  Cars: ['car_id','car_type','customer_id','make','model','year','license_plate','color','created_at','updated_at'],
-  Cities: ['CityID','CityName','StateCode','CountryCode','IsActive','CreatedDate','ModifiedDate'],
-  database_firewall_rules: ['id','name','start_ip_address','end_ip_address','create_date','modify_date'],
-  Locations: ['LocationID','CityID','LocationName','Area','Pincode','IsActive','CreatedDate','ModifiedDate'],
-  Notifications: ['notification_id','user_id','message','type','is_read','created_at'],
-  Payments: ['payment_id','booking_id','amount','payment_method','payment_status','transaction_date'],
-  Products: ['ProductID','ProductName','Price','ProductDescription'],
-  ProfessionalAllocation: ['allocation_id','booking_id','professional_id','assigned_at','status'],
-  ProfessionalSkills: ['skill_id','professional_id','service_id','proficiency_level'],
-  Services: ['service_id','service_name','description','service_type','base_price','duration_minutes','created_at','car_id','product_id']
-};
-
-// Primary keys
-const tablePKs = {
-  Bookings: 'booking_id',
-  Cars: 'car_id',
-  Cities: 'CityID',
-  database_firewall_rules: 'id',
-  Locations: 'LocationID',
-  Notifications: 'notification_id',
-  Payments: 'payment_id',
-  Products: 'ProductID',
-  ProfessionalAllocation: 'allocation_id',
-  ProfessionalSkills: 'skill_id',
-  Services: 'service_id'
-};
+// Generic CRUD endpoints removed - all endpoints are now custom business logic endpoints
 
 // Health check endpoint - documented in Swagger spec above
 app.get('/', (req, res) => {
@@ -2058,9 +2030,11 @@ app.get('/test', (req, res) => {
       '/swagger.json - API specification',
       '/debug - Debug information',
       '/test - This test endpoint',
-      '/api/Services - Services CRUD',
       '/api/car-details - Car details',
-      '/api/Bookings - Bookings CRUD'
+      '/api/saveBookings - Save bookings',
+      '/api/getUserBookingDetails - Get user bookings',
+      '/api/updateBookingStatus - Update booking status',
+      '/api/getProfessionalAssignments - Get professional assignments'
     ]
   });
 });
@@ -2981,183 +2955,9 @@ app.get('/api/getProfessionalAssignments', async (req, res) => {
   }
 });
 
-// Generic CRUD routes for each table
-Object.keys(tableSchemas).forEach(table => {
-  const pk = tablePKs[table];
-  const columns = tableSchemas[table];
-
-  /**
-   * @swagger
-   * /api/{table}:
-   *   get:
-   *     summary: Get all records from table
-   *     tags: [{table}]
-   *     responses:
-   *       200:
-   *         description: List of records
-   *       503:
-   *         description: Database connection unavailable
-   */
-  app.get(`/api/${table}`, async (req, res) => {
-    try {
-      const result = await sql.query(`SELECT * FROM ${table}`);
-      res.json(result.recordset);
-    } catch (err) {
-      res.status(503).json({ 
-        error: 'Database error',
-        message: err.message,
-        table: table,
-        tip: 'Check Azure SQL firewall rules if connection is denied'
-      });
-    }
-  });
-
-  /**
-   * @swagger
-   * /api/{table}/{id}:
-   *   get:
-   *     summary: Get record by ID
-   *     tags: [{table}]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: string
-   *     responses:
-   *       200:
-   *         description: Record found
-   *       404:
-   *         description: Record not found
-   */
-  app.get(`/api/${table}/:${pk}`, async (req, res) => {
-    try {
-      const request = new sql.Request();
-      request.input('id', req.params[pk]);
-      const result = await request.query(`SELECT * FROM ${table} WHERE ${pk} = @id`);
-      
-      if (result.recordset.length === 0) {
-        return res.status(404).json({ error: 'Record not found' });
-      }
-      
-      res.json(result.recordset[0]);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  /**
-   * @swagger
-   * /api/{table}:
-   *   post:
-   *     summary: Create new record
-   *     tags: [{table}]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *     responses:
-   *       200:
-   *         description: Record created
-   */
-  app.post(`/api/${table}`, async (req, res) => {
-    try {
-      const request = new sql.Request();
-      const fields = columns.filter(col => col !== pk);
-      const values = fields.map(field => req.body[field]);
-      
-      fields.forEach((field, index) => {
-        request.input(field, values[index]);
-      });
-      
-      const placeholders = fields.map(field => `@${field}`).join(', ');
-      const query = `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${placeholders})`;
-      
-      await request.query(query);
-      res.json({ message: 'Created successfully' });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  /**
-   * @swagger
-   * /api/{table}/{id}:
-   *   put:
-   *     summary: Update record
-   *     tags: [{table}]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: string
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *     responses:
-   *       200:
-   *         description: Record updated
-   */
-  app.put(`/api/${table}/:${pk}`, async (req, res) => {
-    try {
-      const request = new sql.Request();
-      const fields = columns.filter(col => col !== pk);
-      
-      request.input('id', req.params[pk]);
-      fields.forEach(field => {
-        if (req.body[field] !== undefined) {
-          request.input(field, req.body[field]);
-        }
-      });
-      
-      const updates = fields
-        .filter(field => req.body[field] !== undefined)
-        .map(field => `${field} = @${field}`)
-        .join(', ');
-      
-      if (updates) {
-        await request.query(`UPDATE ${table} SET ${updates} WHERE ${pk} = @id`);
-      }
-      
-      res.json({ message: 'Updated successfully' });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  /**
-   * @swagger
-   * /api/{table}/{id}:
-   *   delete:
-   *     summary: Delete record
-   *     tags: [{table}]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         required: true
-   *         schema:
-   *           type: string
-   *     responses:
-   *       200:
-   *         description: Record deleted
-   */
-  app.delete(`/api/${table}/:${pk}`, async (req, res) => {
-    try {
-      const request = new sql.Request();
-      request.input('id', req.params[pk]);
-      await request.query(`DELETE FROM ${table} WHERE ${pk} = @id`);
-      res.json({ message: 'Deleted successfully' });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-});
+// ============================================================================
+// SERVER CONFIGURATION
+// ============================================================================
 
 const PORT = process.env.PORT || 3001;
 
