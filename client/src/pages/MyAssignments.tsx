@@ -271,7 +271,7 @@ const MyAssignments: React.FC = () => {
               const isDropdownDisabled = cancelledStatuses.includes(status) || statusUpdatingId === assignment.booking_id;
               
               return (
-                <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '800px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
+                <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6" fontWeight={600}>
