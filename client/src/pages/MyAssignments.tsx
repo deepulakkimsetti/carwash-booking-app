@@ -238,12 +238,13 @@ const MyAssignments: React.FC = () => {
         {!loading && assignments.length > 0 && (() => {
           const filteredAssignments = assignments.filter(a => {
             const status = (a.booking_status || '').toLowerCase();
+            const cancelledStatuses = ['cancelled', 'unavailable', 'not_serviceable'];
             if (tabIndex === 1) {
               return status === 'completed';
             } else if (tabIndex === 2) {
-              return status === 'cancelled';
+              return cancelledStatuses.includes(status);
             } else {
-              return status !== 'completed' && status !== 'cancelled';
+              return status !== 'completed' && !cancelledStatuses.includes(status);
             }
           });
 
@@ -266,7 +267,8 @@ const MyAssignments: React.FC = () => {
               {filteredAssignments.map((assignment, idx) => {
               const { date, time } = formatDateTime(assignment.scheduled_time);
               const status = (assignment.booking_status || '').toLowerCase();
-              const isDropdownDisabled = status === 'completed' || status === 'cancelled' || statusUpdatingId === assignment.booking_id;
+              const cancelledStatuses = ['completed', 'cancelled', 'unavailable', 'not_serviceable'];
+              const isDropdownDisabled = cancelledStatuses.includes(status) || statusUpdatingId === assignment.booking_id;
               
               return (
                 <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '700px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
