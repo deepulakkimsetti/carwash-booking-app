@@ -218,7 +218,7 @@ const MyBookings: React.FC = () => {
               {filteredBookings.map((booking, idx) => {
                 const { date, time } = formatDateTime(booking.scheduled_time);
                 return (
-                <Card key={idx} sx={{ width: { xs: '100%', sm: '95%', md: '90%' }, minWidth: '1000px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
+                <Card key={idx} sx={{ width: { xs: '100%', sm: '90%', md: '75%' }, minWidth: '800px', background: '#f7f8fa', borderRadius: 3, boxShadow: 3, py: 4, px: 4 }}>
                   <CardContent>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
@@ -232,7 +232,7 @@ const MyBookings: React.FC = () => {
                     
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 2, mb: 1, alignItems: 'center' }}>
                       <Typography variant="subtitle1" fontWeight={600}>
-                        Selected Service: {booking.service_name || '-'}
+                        Service: {booking.service_name || '-'}
                       </Typography>
                       <Box sx={{ width: '1px', height: '24px', bgcolor: '#ddd' }} />
                       <Typography variant="subtitle1" fontWeight={600}>
