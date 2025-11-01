@@ -1509,10 +1509,10 @@ app.get('/swagger.json', (req, res) => {
 app.get('/docs', (req, res) => res.redirect('/api-docs'));
 app.get('/documentation', (req, res) => res.redirect('/api-docs'));
 
-// Azure SQL config
+// Azure SQL config - SECURITY: Use environment variables only
 const dbConfig = {
   user: process.env.DB_USER || 'sqladmin',
-  password: process.env.DB_PASSWORD || 'Haneesh@77',
+  password: process.env.DB_PASSWORD, // No fallback - MUST be set in Azure environment
   server: process.env.DB_SERVER || 'carwashservicesqlserver.database.windows.net',
   database: process.env.DB_NAME || 'CarwashserviceDB',
   options: {
@@ -1520,6 +1520,12 @@ const dbConfig = {
     enableArithAbort: true
   }
 };
+
+// Validate critical environment variables
+if (!process.env.DB_PASSWORD) {
+  console.error('❌ CRITICAL: DB_PASSWORD environment variable is not set!');
+  console.error('📋 Add it in Azure Portal → App Service → Configuration → Application Settings');
+}
 
 // Non-blocking Azure SQL connection for startup stability
 const connectWithRetry = async () => {

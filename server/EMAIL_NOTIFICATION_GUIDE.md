@@ -37,19 +37,21 @@ Sent to professionals when assigned a new job:
 
 ### Configuration
 
-**API Credentials:**
-```
-API Key: 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
-Sender Email: deepulakkimsetti@gmail.com
-Sender Name: CarWash Booking App
-```
+**⚠️ SECURITY NOTICE: API credentials MUST be set via Azure environment variables!**
 
-**Environment Variables** (Optional - for production):
+See `SECURITY_SETUP.md` for detailed instructions on configuring environment variables.
+
+**Environment Variables** (Required for production):
 ```env
-BREVO_API_KEY=your_api_key_here
+BREVO_API_KEY=your_brevo_api_key_from_azure_portal
 SENDER_EMAIL=deepulakkimsetti@gmail.com
 SENDER_NAME=CarWash Booking App
 ```
+
+**Configuration in Azure:**
+- Azure Portal → App Service → Configuration → Application Settings
+- Add all credentials as environment variables
+- Never hardcode API keys in source code!
 
 ## 📝 API Changes
 
