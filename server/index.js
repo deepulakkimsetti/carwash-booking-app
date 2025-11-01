@@ -1601,6 +1601,32 @@ async function getProfessionalsByLocation(locationId) {
 }
 
 /**
+ * Get customer details from Firebase by customer ID
+ */
+async function getCustomerFromFirebase(customerId) {
+  try {
+    const customerRef = firebaseDB.ref(`users/${customerId}`);
+    const snapshot = await customerRef.once('value');
+    
+    if (!snapshot.exists()) {
+      console.log(`⚠️ Customer ${customerId} not found in Firebase`);
+      return null;
+    }
+    
+    const customer = snapshot.val();
+    return {
+      id: customerId,
+      name: customer.fullName || customer.name || 'Customer',
+      email: customer.email || null,
+      phone: customer.phone || null
+    };
+  } catch (error) {
+    console.error('❌ Error fetching customer from Firebase:', error.message);
+    return null;
+  }
+}
+
+/**
  * Get total booking count for a professional
  * Excludes bookings with 'completed' or 'rejected' status
  */
@@ -2698,7 +2724,7 @@ app.put('/api/updateBookingStatus', async (req, res) => {
       });
     }
 
-    // Check if booking exists and get current booking details
+    // Check if booking exists and get current booking details including customer info
     const checkRequest = new sql.Request();
     checkRequest.input('booking_id', sql.BigInt, parseInt(booking_id));
     const checkResult = await checkRequest.query(`
@@ -2706,6 +2732,7 @@ app.put('/api/updateBookingStatus', async (req, res) => {
         b.booking_id, 
         b.booking_status as old_status, 
         b.scheduled_time,
+        b.customer_id,
         s.service_name
       FROM Bookings b
       INNER JOIN Services s ON b.service_id = s.service_id
@@ -2738,18 +2765,39 @@ app.put('/api/updateBookingStatus', async (req, res) => {
     console.log(`✅ Booking ${booking_id} status updated to: ${booking_status}`);
     
     // Send email notification about status update (non-blocking)
-    if (customer_email && oldStatus !== booking_status) {
-      console.log('📧 Sending status update email...');
-      emailService.sendStatusUpdateEmail({
-        customer_email: customer_email,
-        customer_name: customer_name,
-        booking_id: parseInt(booking_id),
-        old_status: oldStatus,
-        new_status: booking_status,
-        service_name: bookingDetails.service_name,
-        scheduled_time: bookingDetails.scheduled_time
-      }).then(() => console.log('✅ Status update email sent'))
-        .catch(err => console.error('❌ Error sending status update email:', err.message));
+    if (oldStatus !== booking_status) {
+      console.log('📧 Preparing to send status update email...');
+      
+      // Fetch customer details from Firebase using customer_id from booking
+      getCustomerFromFirebase(bookingDetails.customer_id)
+        .then(async (customer) => {
+          if (customer && customer.email) {
+            console.log(`📧 Sending status update email to: ${customer.email} (${customer.name})`);
+            
+            try {
+              await emailService.sendStatusUpdateEmail({
+                customer_email: customer.email,
+                customer_name: customer.name,
+                booking_id: parseInt(booking_id),
+                old_status: oldStatus,
+                new_status: booking_status,
+                service_name: bookingDetails.service_name,
+                scheduled_time: bookingDetails.scheduled_time
+              });
+              console.log(`✅ Status update email sent successfully to: ${customer.email}`);
+            } catch (emailError) {
+              console.error('❌ Error sending status update email:', emailError.message);
+            }
+          } else {
+            console.log(`⚠️ Customer ${bookingDetails.customer_id} not found in Firebase or has no email`);
+            console.log('💡 Tip: Ensure customer exists in Firebase with a valid email address');
+          }
+        })
+        .catch(err => {
+          console.error('❌ Error fetching customer from Firebase:', err.message);
+        });
+    } else {
+      console.log('ℹ️ Status unchanged - No email notification needed');
     }
     
     res.json({
