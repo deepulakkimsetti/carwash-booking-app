@@ -51,7 +51,11 @@ async function sendBookingConfirmationEmail(bookingDetails) {
       name: customer_name || 'Customer'
     }];
 
-    sendSmtpEmail.subject = `Booking Confirmation - CarWash Service #${booking_id}`;
+    // Dynamic subject based on booking status
+    const subjectPrefix = booking_status === 'unavailable' 
+      ? 'Booking Cancelled - Professionals Unavailable' 
+      : 'Booking Confirmation';
+    sendSmtpEmail.subject = `${subjectPrefix} - CarWash Service #${booking_id}`;
 
     // Format date for display
     const formattedDate = new Date(scheduled_time).toLocaleString('en-IN', {
@@ -162,14 +166,14 @@ async function sendBookingConfirmationEmail(bookingDetails) {
 </head>
 <body>
   <div class="header">
-    <h1>🚗 Booking Confirmed!</h1>
-    <p style="margin: 10px 0 0 0; font-size: 16px;">Thank you for choosing CarWash Booking App</p>
+    <h1>${booking_status === 'unavailable' ? '❌ Booking Cancelled' : '🚗 Booking Confirmed!'}</h1>
+    <p style="margin: 10px 0 0 0; font-size: 16px;">${booking_status === 'unavailable' ? 'We apologize for the inconvenience' : 'Thank you for choosing CarWash Booking App'}</p>
   </div>
   
   <div class="content">
     <p>Dear <strong>${customer_name || 'Customer'}</strong>,</p>
     
-    <p>Your car wash service has been successfully booked. Here are your booking details:</p>
+    <p>${booking_status === 'unavailable' ? 'Unfortunately, we had to cancel your booking request.' : 'Your car wash service has been successfully booked.'} Here are your booking details:</p>
     
     <div class="booking-details">
       <div class="detail-row">
@@ -218,8 +222,14 @@ async function sendBookingConfirmationEmail(bookingDetails) {
     ` : ''}
     
     ${booking_status === 'unavailable' ? `
-    <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 4px;">
-      <p style="margin: 0; color: #856404;"><strong>⚠️ Note:</strong> No professionals are available at your requested time. Our team will contact you shortly to reschedule.</p>
+    <div style="background: #f8d7da; padding: 20px; border-left: 4px solid #dc3545; margin: 20px 0; border-radius: 4px;">
+      <h3 style="margin-top: 0; color: #721c24;">❌ Booking Cancelled - Professionals Unavailable</h3>
+      <p style="margin: 8px 0 0 0; color: #721c24;">
+        We're sorry, but we had to cancel your booking because <strong>all professionals in your selected location were busy</strong> during your requested time slot.
+      </p>
+      <p style="margin: 8px 0 0 0; color: #721c24;">
+        Please try booking again with a different time or contact our support team to find an alternative slot.
+      </p>
     </div>
     ` : ''}
     

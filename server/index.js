@@ -2272,10 +2272,10 @@ app.post('/api/saveBookings', async (req, res) => {
 
     // STEP 6: If no professional was assigned, update booking status
     if (!allocationResult) {
-      console.log('⚠️ All professionals are busy during the requested time');
+      console.log('⚠️ All professionals are busy during the requested time - Cancelling booking');
       await updateBookingStatus(newBookingId, 'unavailable');
       
-      // Send email notification about unavailability
+      // Send email notification about cancellation due to unavailability
       if (customer_email) {
         emailService.sendBookingConfirmationEmail({
           customer_email: customer_email,
@@ -2291,13 +2291,14 @@ app.post('/api/saveBookings', async (req, res) => {
           professional_name: null,
           professional_phone: null,
           professional_email: null
-        }).then(() => console.log('✅ Unavailability email sent'))
-          .catch(err => console.error('❌ Error sending unavailability email:', err.message));
+        }).then(() => console.log('✅ Cancellation email sent - All professionals busy'))
+          .catch(err => console.error('❌ Error sending cancellation email:', err.message));
       }
       
       return res.status(201).json({
-        success: true,
-        message: 'Booking saved but no professionals available at the requested time',
+        success: false,
+        message: 'Booking cancelled - All professionals in your location are busy at the requested time',
+        reason: 'no_professionals_available',
         booking_id: newBookingId,
         booking_status: 'unavailable',
         professionals_checked: professionalsWithCounts.length,
