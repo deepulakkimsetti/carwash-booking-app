@@ -502,7 +502,9 @@ const ServiceBooking: React.FC = () => {
         booking_status: "pending",
         scheduled_time: scheduledDateTime,
         location_address: fullAddress,
-        LocationID: selectedLocationObj?.LocationID || 1
+        LocationID: selectedLocationObj?.LocationID || 1,
+        customer_email: user.email || '',
+        customer_name: user.displayName || user.email?.split('@')[0] || 'Guest'
       };
 
       console.log('Submitting booking data:', bookingData);
