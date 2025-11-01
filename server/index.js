@@ -2199,13 +2199,34 @@ app.post('/api/saveBookings', async (req, res) => {
     }
 
     if (professionals.length === 0) {
-      // STEP 4a: No professionals available for this location
-      console.log('⚠️ No professionals available for this location');
+      // STEP 4a: No professionals registered for this location
+      console.log('⚠️ No professionals registered for this location - Area not serviceable');
       await updateBookingStatus(newBookingId, 'not_serviceable');
       
+      // Send email notification about location not being serviceable
+      if (customer_email) {
+        emailService.sendBookingConfirmationEmail({
+          customer_email: customer_email,
+          customer_name: customer_name,
+          booking_id: newBookingId,
+          service_name: serviceResult.recordset[0].service_name || 'Car Wash Service',
+          car_type: 'N/A',
+          scheduled_time: scheduledDate.toISOString(),
+          location_address: location_address,
+          base_price: serviceResult.recordset[0].base_price || 0,
+          duration_minutes: durationMinutes,
+          booking_status: 'not_serviceable',
+          professional_name: null,
+          professional_phone: null,
+          professional_email: null
+        }).then(() => console.log('✅ Location not serviceable email sent'))
+          .catch(err => console.error('❌ Error sending location not serviceable email:', err.message));
+      }
+      
       return res.status(201).json({
-        success: true,
-        message: 'Booking saved but area is not serviceable',
+        success: false,
+        message: 'Booking cancelled - This location is not serviceable yet',
+        reason: 'location_not_serviceable',
         booking_id: newBookingId,
         booking_status: 'not_serviceable',
         data: {
