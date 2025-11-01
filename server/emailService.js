@@ -3,20 +3,10 @@ const brevo = require('@getbrevo/brevo');
 // Initialize Brevo API client
 const apiInstance = new brevo.TransactionalEmailsApi();
 const apiKey = apiInstance.authentications['apiKey'];
+apiKey.apiKey = process.env.BREVO_API_KEY || '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';
 
-// IMPORTANT: Set these environment variables in Azure App Service Configuration
-if (!process.env.BREVO_API_KEY) {
-  console.error('❌ BREVO_API_KEY environment variable is not set!');
-  console.error('⚠️  Please add it in Azure App Service → Configuration → Application settings');
-}
-apiKey.apiKey = process.env.BREVO_API_KEY;
-
-// Configuration - Load from environment variables
-if (!process.env.SENDER_EMAIL) {
-  console.error('❌ SENDER_EMAIL environment variable is not set!');
-  console.error('⚠️  Please add it in Azure App Service → Configuration → Application settings');
-}
-const SENDER_EMAIL = process.env.SENDER_EMAIL;
+// Configuration
+const SENDER_EMAIL = process.env.SENDER_EMAIL || 'deepulakkimsetti@gmail.com';
 const SENDER_NAME = process.env.SENDER_NAME || 'CarWash Booking App';
 
 /**
