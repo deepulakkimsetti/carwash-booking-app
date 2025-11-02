@@ -5,6 +5,7 @@ const path = require('path');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const emailService = require('./emailService');
+const PptxGenJS = require('pptxgenjs');
 
 const app = express();
 
@@ -1407,6 +1408,108 @@ const simpleSwaggerSpec = {
                     tip: {
                       type: 'string',
                       example: 'Check database connection and table structure'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/generateBookingSummaryPPT': {
+      get: {
+        summary: 'Generate PowerPoint presentation with booking summary',
+        description: 'Creates and downloads a PowerPoint presentation containing booking details and statistics. Can be filtered by customer_id.',
+        tags: ['Reports'],
+        parameters: [
+          {
+            name: 'customer_id',
+            in: 'query',
+            required: false,
+            description: 'Optional customer identifier to filter bookings for specific customer',
+            schema: {
+              type: 'string',
+              example: 'CUST001'
+            }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'PowerPoint file generated and downloaded successfully',
+            content: {
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+                schema: {
+                  type: 'string',
+                  format: 'binary',
+                  description: 'PPTX file binary data'
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Error generating presentation',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Internal Server Error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Failed to generate PowerPoint presentation'
+                    },
+                    details: {
+                      type: 'string',
+                      example: 'Database connection failed'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/generateServiceCatalogPPT': {
+      get: {
+        summary: 'Generate PowerPoint presentation with service catalog',
+        description: 'Creates and downloads a PowerPoint presentation containing all available services with details, pricing, and categorization.',
+        tags: ['Reports'],
+        responses: {
+          '200': {
+            description: 'PowerPoint file generated and downloaded successfully',
+            content: {
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+                schema: {
+                  type: 'string',
+                  format: 'binary',
+                  description: 'PPTX file binary data'
+                }
+              }
+            }
+          },
+          '500': {
+            description: 'Error generating presentation',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    error: {
+                      type: 'string',
+                      example: 'Internal Server Error'
+                    },
+                    message: {
+                      type: 'string',
+                      example: 'Failed to generate PowerPoint presentation'
+                    },
+                    details: {
+                      type: 'string',
+                      example: 'Database connection failed'
                     }
                   }
                 }
@@ -2939,6 +3042,604 @@ app.get('/api/getProfessionalAssignments', async (req, res) => {
           assignment_status: 'assigned'
         }
       ]
+    });
+  }
+});
+
+// ============================================================================
+// PPT GENERATION ENDPOINTS
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/generateBookingSummaryPPT:
+ *   get:
+ *     summary: Generate PowerPoint presentation with booking summary
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: customer_id
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Optional customer identifier to filter bookings
+ *     responses:
+ *       200:
+ *         description: PowerPoint file generated successfully
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.presentationml.presentation:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       500:
+ *         description: Error generating presentation
+ */
+app.get('/api/generateBookingSummaryPPT', async (req, res) => {
+  console.log('📊 /api/generateBookingSummaryPPT route hit at:', new Date().toISOString());
+  
+  try {
+    const { customer_id } = req.query;
+    
+    // Create a new presentation
+    const pptx = new PptxGenJS();
+    
+    // Set presentation properties
+    pptx.author = 'CarWash Booking System';
+    pptx.company = 'CarWash Services';
+    pptx.title = customer_id ? `Booking Summary for ${customer_id}` : 'All Bookings Summary';
+    pptx.subject = 'Booking Summary Report';
+    
+    // Add title slide
+    const titleSlide = pptx.addSlide();
+    titleSlide.background = { color: '2C3E50' };
+    titleSlide.addText(
+      customer_id ? `Booking Summary\nfor ${customer_id}` : 'All Bookings Summary',
+      { 
+        x: 0.5, 
+        y: 1.5, 
+        w: 9, 
+        h: 2, 
+        fontSize: 44, 
+        bold: true, 
+        color: 'FFFFFF',
+        align: 'center'
+      }
+    );
+    titleSlide.addText(
+      `Generated on ${new Date().toLocaleDateString()}`,
+      { 
+        x: 0.5, 
+        y: 3.5, 
+        w: 9, 
+        h: 0.5, 
+        fontSize: 16, 
+        color: 'FFFFFF',
+        align: 'center'
+      }
+    );
+    
+    // Fetch booking data from database
+    let bookingsQuery = `
+      SELECT 
+        b.booking_id,
+        b.customer_id,
+        s.service_name,
+        (SELECT type FROM [dbo].[Cars] WHERE id = s.car_id) as car_type,
+        b.scheduled_time,
+        b.booking_status,
+        s.base_price,
+        s.duration_minutes,
+        b.location_address,
+        (SELECT CityName FROM [dbo].[Cities] WHERE CityID = (SELECT CityID FROM [dbo].[Locations] WHERE LocationID = b.LocationID)) as cityName,
+        (SELECT LocationName FROM [dbo].[Locations] WHERE LocationID = b.LocationID) as location_name
+      FROM [dbo].[Bookings] as b
+      INNER JOIN [dbo].[Services] as s ON b.service_id = s.service_id
+    `;
+    
+    if (customer_id) {
+      bookingsQuery += ` WHERE b.customer_id = @customer_id`;
+    }
+    
+    bookingsQuery += ` ORDER BY b.scheduled_time DESC`;
+    
+    const request = new sql.Request();
+    if (customer_id) {
+      request.input('customer_id', sql.VarChar, customer_id);
+    }
+    
+    const result = await request.query(bookingsQuery);
+    const bookings = result.recordset;
+    
+    console.log(`✅ Retrieved ${bookings.length} bookings for presentation`);
+    
+    // Add overview slide
+    const overviewSlide = pptx.addSlide();
+    overviewSlide.addText('Booking Overview', { 
+      x: 0.5, 
+      y: 0.5, 
+      w: 9, 
+      h: 0.6, 
+      fontSize: 32, 
+      bold: true, 
+      color: '2C3E50'
+    });
+    
+    // Calculate statistics
+    const totalBookings = bookings.length;
+    const totalRevenue = bookings.reduce((sum, b) => sum + (b.base_price || 0), 0);
+    const statusCounts = bookings.reduce((acc, b) => {
+      acc[b.booking_status] = (acc[b.booking_status] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Add statistics
+    const statsRows = [
+      ['Metric', 'Value'],
+      ['Total Bookings', totalBookings.toString()],
+      ['Total Revenue', `$${totalRevenue.toFixed(2)}`],
+      ['Average Price', `$${(totalRevenue / totalBookings || 0).toFixed(2)}`],
+      ['', ''],
+      ['Status Breakdown', 'Count']
+    ];
+    
+    Object.entries(statusCounts).forEach(([status, count]) => {
+      statsRows.push([status.charAt(0).toUpperCase() + status.slice(1), count.toString()]);
+    });
+    
+    overviewSlide.addTable(statsRows, {
+      x: 1.0,
+      y: 1.5,
+      w: 8.0,
+      h: 3.0,
+      colW: [4.0, 4.0],
+      rowH: 0.4,
+      fill: { color: 'F3F4F6' },
+      color: '1F2937',
+      fontSize: 14,
+      border: { pt: 1, color: 'D1D5DB' },
+      align: 'left',
+      valign: 'middle'
+    });
+    
+    // Add booking details slides (show up to 10 most recent)
+    const maxBookingsToShow = Math.min(bookings.length, 10);
+    for (let i = 0; i < maxBookingsToShow; i++) {
+      const booking = bookings[i];
+      const detailSlide = pptx.addSlide();
+      
+      // Slide title
+      detailSlide.addText(`Booking #${booking.booking_id}`, { 
+        x: 0.5, 
+        y: 0.5, 
+        w: 9, 
+        h: 0.6, 
+        fontSize: 28, 
+        bold: true, 
+        color: '2C3E50'
+      });
+      
+      // Booking details table
+      const detailRows = [
+        ['Field', 'Details'],
+        ['Booking ID', booking.booking_id.toString()],
+        ['Customer ID', booking.customer_id || 'N/A'],
+        ['Service', booking.service_name || 'N/A'],
+        ['Car Type', booking.car_type || 'N/A'],
+        ['Status', booking.booking_status || 'N/A'],
+        ['Scheduled Time', booking.scheduled_time ? new Date(booking.scheduled_time).toLocaleString() : 'N/A'],
+        ['Duration', `${booking.duration_minutes || 0} minutes`],
+        ['Price', `$${(booking.base_price || 0).toFixed(2)}`],
+        ['City', booking.cityName || 'N/A'],
+        ['Location', booking.location_name || 'N/A'],
+        ['Address', booking.location_address || 'N/A']
+      ];
+      
+      detailSlide.addTable(detailRows, {
+        x: 0.5,
+        y: 1.5,
+        w: 9.0,
+        h: 4.0,
+        colW: [3.0, 6.0],
+        rowH: 0.35,
+        fill: { color: 'F9FAFB' },
+        color: '374151',
+        fontSize: 12,
+        border: { pt: 1, color: 'D1D5DB' },
+        align: 'left',
+        valign: 'middle'
+      });
+      
+      // Add status indicator
+      const statusColor = {
+        'pending': 'FCD34D',
+        'confirmed': '3B82F6',
+        'assigned': '8B5CF6',
+        'in-progress': 'F59E0B',
+        'inprogress': 'F59E0B',
+        'completed': '10B981',
+        'cancelled': 'EF4444',
+        'unavailable': 'EF4444',
+        'not_serviceable': 'EF4444'
+      };
+      
+      const status = booking.booking_status || 'unknown';
+      const bgColor = statusColor[status.toLowerCase()] || 'CCCCCC';
+      detailSlide.addText(status.toUpperCase(), {
+        x: 8.0,
+        y: 0.5,
+        w: 1.5,
+        h: 0.6,
+        fontSize: 12,
+        bold: true,
+        color: 'FFFFFF',
+        fill: { color: bgColor },
+        align: 'center',
+        valign: 'middle'
+      });
+    }
+    
+    // Add summary slide at the end
+    const summarySlide = pptx.addSlide();
+    summarySlide.background = { color: '2C3E50' };
+    summarySlide.addText('Thank You!', { 
+      x: 0.5, 
+      y: 2.0, 
+      w: 9, 
+      h: 1.0, 
+      fontSize: 44, 
+      bold: true, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    summarySlide.addText('CarWash Booking System', { 
+      x: 0.5, 
+      y: 3.5, 
+      w: 9, 
+      h: 0.5, 
+      fontSize: 20, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    
+    // Generate the presentation
+    const fileName = customer_id 
+      ? `booking-summary-${customer_id}-${Date.now()}.pptx`
+      : `all-bookings-summary-${Date.now()}.pptx`;
+    
+    console.log(`✅ Generating PowerPoint presentation: ${fileName}`);
+    
+    // Write to buffer and send as response
+    const pptxData = await pptx.write({ outputType: 'base64' });
+    const buffer = Buffer.from(pptxData, 'base64');
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(buffer);
+    
+    console.log(`✅ PowerPoint presentation sent successfully`);
+    
+  } catch (err) {
+    console.error('❌ Error generating PowerPoint presentation:', err.message);
+    console.error('📋 Error stack:', err.stack);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to generate PowerPoint presentation',
+      details: err.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/generateServiceCatalogPPT:
+ *   get:
+ *     summary: Generate PowerPoint presentation with service catalog
+ *     tags: [Reports]
+ *     responses:
+ *       200:
+ *         description: PowerPoint file generated successfully
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.presentationml.presentation:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       500:
+ *         description: Error generating presentation
+ */
+app.get('/api/generateServiceCatalogPPT', async (req, res) => {
+  console.log('📊 /api/generateServiceCatalogPPT route hit at:', new Date().toISOString());
+  
+  try {
+    // Create a new presentation
+    const pptx = new PptxGenJS();
+    
+    // Set presentation properties
+    pptx.author = 'CarWash Booking System';
+    pptx.company = 'CarWash Services';
+    pptx.title = 'Service Catalog';
+    pptx.subject = 'Available Services';
+    
+    // Add title slide
+    const titleSlide = pptx.addSlide();
+    titleSlide.background = { color: '2C3E50' };
+    titleSlide.addText('Service Catalog', { 
+      x: 0.5, 
+      y: 1.5, 
+      w: 9, 
+      h: 2, 
+      fontSize: 54, 
+      bold: true, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    titleSlide.addText('CarWash Booking System', { 
+      x: 0.5, 
+      y: 3.5, 
+      w: 9, 
+      h: 0.5, 
+      fontSize: 24, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    titleSlide.addText(`Generated on ${new Date().toLocaleDateString()}`, { 
+      x: 0.5, 
+      y: 4.2, 
+      w: 9, 
+      h: 0.4, 
+      fontSize: 14, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    
+    // Fetch all services from database
+    const servicesQuery = `
+      SELECT 
+        s.service_id,
+        s.service_name,
+        s.description,
+        s.service_type,
+        s.base_price,
+        s.duration_minutes,
+        (SELECT type FROM [dbo].[Cars] WHERE id = s.car_id) as car_type,
+        (SELECT ProductName FROM [dbo].[Products] WHERE ProductID = s.product_id) as product_name
+      FROM [dbo].[Services] as s
+      ORDER BY s.service_type, s.base_price
+    `;
+    
+    const request = new sql.Request();
+    const result = await request.query(servicesQuery);
+    const services = result.recordset;
+    
+    console.log(`✅ Retrieved ${services.length} services for presentation`);
+    
+    // Add overview slide
+    const overviewSlide = pptx.addSlide();
+    overviewSlide.addText('Our Services', { 
+      x: 0.5, 
+      y: 0.5, 
+      w: 9, 
+      h: 0.6, 
+      fontSize: 32, 
+      bold: true, 
+      color: '2C3E50'
+    });
+    
+    // Group services by type
+    const servicesByType = services.reduce((acc, service) => {
+      const type = service.service_type || 'Other';
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(service);
+      return acc;
+    }, {});
+    
+    // Add statistics
+    const totalServices = services.length;
+    const avgPrice = services.reduce((sum, s) => sum + (s.base_price || 0), 0) / totalServices;
+    const avgDuration = services.reduce((sum, s) => sum + (s.duration_minutes || 0), 0) / totalServices;
+    
+    overviewSlide.addText(
+      `We offer ${totalServices} different services across ${Object.keys(servicesByType).length} categories`,
+      { 
+        x: 1.0, 
+        y: 1.5, 
+        w: 8.0, 
+        h: 0.5, 
+        fontSize: 18, 
+        color: '4B5563'
+      }
+    );
+    
+    const statsRows = [
+      ['Metric', 'Value'],
+      ['Total Services', totalServices.toString()],
+      ['Service Categories', Object.keys(servicesByType).length.toString()],
+      ['Average Price', `$${avgPrice.toFixed(2)}`],
+      ['Average Duration', `${Math.round(avgDuration)} minutes`]
+    ];
+    
+    overviewSlide.addTable(statsRows, {
+      x: 1.5,
+      y: 2.5,
+      w: 7.0,
+      h: 2.0,
+      colW: [3.5, 3.5],
+      rowH: 0.4,
+      fill: { color: 'F3F4F6' },
+      color: '1F2937',
+      fontSize: 14,
+      border: { pt: 1, color: 'D1D5DB' },
+      align: 'left',
+      valign: 'middle'
+    });
+    
+    // Add a slide for each service type
+    for (const [serviceType, typeServices] of Object.entries(servicesByType)) {
+      const categorySlide = pptx.addSlide();
+      
+      // Category title
+      categorySlide.addText(serviceType, { 
+        x: 0.5, 
+        y: 0.5, 
+        w: 9, 
+        h: 0.6, 
+        fontSize: 32, 
+        bold: true, 
+        color: '2C3E50'
+      });
+      
+      categorySlide.addText(`${typeServices.length} service(s) available`, { 
+        x: 0.5, 
+        y: 1.0, 
+        w: 9, 
+        h: 0.3, 
+        fontSize: 14, 
+        color: '6B7280'
+      });
+      
+      // Services table
+      const serviceRows = [
+        ['Service Name', 'Car Type', 'Duration', 'Price']
+      ];
+      
+      typeServices.forEach(service => {
+        serviceRows.push([
+          service.service_name || 'N/A',
+          service.car_type || 'N/A',
+          `${service.duration_minutes || 0} min`,
+          `$${(service.base_price || 0).toFixed(2)}`
+        ]);
+      });
+      
+      categorySlide.addTable(serviceRows, {
+        x: 0.5,
+        y: 1.8,
+        w: 9.0,
+        h: 3.5,
+        colW: [3.0, 2.0, 2.0, 2.0],
+        rowH: 0.4,
+        fill: { color: 'F9FAFB' },
+        color: '374151',
+        fontSize: 12,
+        border: { pt: 1, color: 'D1D5DB' },
+        align: 'center',
+        valign: 'middle'
+      });
+    }
+    
+    // Add detailed service slides (up to 10)
+    const maxServicesToShow = Math.min(services.length, 10);
+    for (let i = 0; i < maxServicesToShow; i++) {
+      const service = services[i];
+      const detailSlide = pptx.addSlide();
+      
+      // Service name as title
+      detailSlide.addText(service.service_name || 'Service', { 
+        x: 0.5, 
+        y: 0.5, 
+        w: 9, 
+        h: 0.7, 
+        fontSize: 32, 
+        bold: true, 
+        color: '2C3E50'
+      });
+      
+      // Service type badge
+      detailSlide.addText(service.service_type || 'Standard', {
+        x: 7.5,
+        y: 0.5,
+        w: 2.0,
+        h: 0.5,
+        fontSize: 14,
+        bold: true,
+        color: 'FFFFFF',
+        fill: { color: '3B82F6' },
+        align: 'center',
+        valign: 'middle'
+      });
+      
+      // Description
+      if (service.description) {
+        detailSlide.addText(service.description, { 
+          x: 0.5, 
+          y: 1.5, 
+          w: 9, 
+          h: 1.0, 
+          fontSize: 14, 
+          color: '4B5563'
+        });
+      }
+      
+      // Service details table
+      const detailRows = [
+        ['Attribute', 'Details'],
+        ['Car Type', service.car_type || 'N/A'],
+        ['Product', service.product_name || 'N/A'],
+        ['Duration', `${service.duration_minutes || 0} minutes`],
+        ['Base Price', `$${(service.base_price || 0).toFixed(2)}`],
+        ['Service Type', service.service_type || 'N/A']
+      ];
+      
+      detailSlide.addTable(detailRows, {
+        x: 1.5,
+        y: 2.8,
+        w: 7.0,
+        h: 2.4,
+        colW: [2.5, 4.5],
+        rowH: 0.4,
+        fill: { color: 'F3F4F6' },
+        color: '1F2937',
+        fontSize: 14,
+        border: { pt: 1, color: 'D1D5DB' },
+        align: 'left',
+        valign: 'middle'
+      });
+    }
+    
+    // Add final slide
+    const finalSlide = pptx.addSlide();
+    finalSlide.background = { color: '2C3E50' };
+    finalSlide.addText('Book Your Service Today!', { 
+      x: 0.5, 
+      y: 2.0, 
+      w: 9, 
+      h: 1.0, 
+      fontSize: 40, 
+      bold: true, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    finalSlide.addText('Visit our website or call us to schedule', { 
+      x: 0.5, 
+      y: 3.5, 
+      w: 9, 
+      h: 0.5, 
+      fontSize: 18, 
+      color: 'FFFFFF',
+      align: 'center'
+    });
+    
+    // Generate the presentation
+    const fileName = `service-catalog-${Date.now()}.pptx`;
+    
+    console.log(`✅ Generating PowerPoint presentation: ${fileName}`);
+    
+    // Write to buffer and send as response
+    const pptxData = await pptx.write({ outputType: 'base64' });
+    const buffer = Buffer.from(pptxData, 'base64');
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(buffer);
+    
+    console.log(`✅ PowerPoint presentation sent successfully`);
+    
+  } catch (err) {
+    console.error('❌ Error generating PowerPoint presentation:', err.message);
+    console.error('📋 Error stack:', err.stack);
+    res.status(500).json({ 
+      error: 'Internal Server Error',
+      message: 'Failed to generate PowerPoint presentation',
+      details: err.message
     });
   }
 });
