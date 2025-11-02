@@ -3262,8 +3262,9 @@ app.get('/api/generateBookingSummaryPPT', async (req, res) => {
         'not_serviceable': 'EF4444'
       };
       
-      const bgColor = statusColor[booking.booking_status.toLowerCase()] || 'CCCCCC';
-      detailSlide.addText(booking.booking_status.toUpperCase(), {
+      const status = booking.booking_status || 'unknown';
+      const bgColor = statusColor[status.toLowerCase()] || 'CCCCCC';
+      detailSlide.addText(status.toUpperCase(), {
         x: 8.0,
         y: 0.5,
         w: 1.5,
@@ -3405,7 +3406,8 @@ app.get('/api/generateServiceCatalogPPT', async (req, res) => {
       ORDER BY s.service_type, s.base_price
     `;
     
-    const result = await sql.query(servicesQuery);
+    const request = new sql.Request();
+    const result = await request.query(servicesQuery);
     const services = result.recordset;
     
     console.log(`✅ Retrieved ${services.length} services for presentation`);
