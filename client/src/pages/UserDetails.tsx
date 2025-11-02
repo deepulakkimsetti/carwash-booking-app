@@ -4,10 +4,36 @@ import { auth, db } from '../firebase';
 import { onValue, ref } from 'firebase/database';
 import { useNavigate } from 'react-router-dom';
 
+interface Location {
+  LocationID: number;
+  LocationName: string;
+}
+
 const UserDetails: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [locationNames, setLocationNames] = useState<Record<number, string>>({});
   const navigate = useNavigate();
+
+  // Fetch location names from API
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getLocations');
+        if (response.ok) {
+          const locations: Location[] = await response.json();
+          const nameMap: Record<number, string> = {};
+          locations.forEach(loc => {
+            nameMap[loc.LocationID] = loc.LocationName;
+          });
+          setLocationNames(nameMap);
+        }
+      } catch (error) {
+        console.error('Error fetching locations:', error);
+      }
+    };
+    fetchLocations();
+  }, []);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -63,14 +89,26 @@ const UserDetails: React.FC = () => {
             </Typography>
             {Object.entries(user)
               .filter(([key]) => key !== 'name')
-              .map(([key, value], idx, arr) => (
-                <React.Fragment key={key}>
-                  <Typography variant="body1" color="text.secondary" gutterBottom>
-                    {key.charAt(0).toUpperCase() + key.slice(1)}: {String(value)}
-                  </Typography>
-                  {idx < arr.length - 1 && <Divider sx={{ my: 1, bgcolor: '#e0e0e0' }} />}
-                </React.Fragment>
-              ))}
+              .map(([key, value], idx, arr) => {
+                let displayValue = String(value);
+                
+                // Convert nearestLocations IDs to names
+                if (key === 'nearestLocations' && Array.isArray(value)) {
+                  const names = value
+                    .map(id => locationNames[id] || `Location ${id}`)
+                    .join(', ');
+                  displayValue = names || 'N/A';
+                }
+                
+                return (
+                  <React.Fragment key={key}>
+                    <Typography variant="body1" color="text.secondary" gutterBottom>
+                      {key.charAt(0).toUpperCase() + key.slice(1)}: {displayValue}
+                    </Typography>
+                    {idx < arr.length - 1 && <Divider sx={{ my: 1, bgcolor: '#e0e0e0' }} />}
+                  </React.Fragment>
+                );
+              })}
           </CardContent>
         </Card>
       </Box>
