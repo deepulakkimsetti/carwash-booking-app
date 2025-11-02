@@ -1639,7 +1639,7 @@ async function getProfessionalBookingCount(professionalId) {
       SELECT COUNT(*) as bookingCount 
       FROM ProfessionalAllocation 
       WHERE professional_id = @professional_id
-        AND status NOT IN ('completed', 'rejected')
+        AND status IN ('assigned', 'confirmed')
     `);
     
     return result.recordset[0].bookingCount || 0;
