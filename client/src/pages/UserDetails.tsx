@@ -9,32 +9,19 @@ interface Location {
   LocationName: string;
 }
 
+interface City {
+  CityID: number;
+  CityName: string;
+}
+
 const UserDetails: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [locationNames, setLocationNames] = useState<Record<number, string>>({});
+  const [cityId, setCityId] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // Fetch location names from API
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getLocations');
-        if (response.ok) {
-          const locations: Location[] = await response.json();
-          const nameMap: Record<number, string> = {};
-          locations.forEach(loc => {
-            nameMap[loc.LocationID] = loc.LocationName;
-          });
-          setLocationNames(nameMap);
-        }
-      } catch (error) {
-        console.error('Error fetching locations:', error);
-      }
-    };
-    fetchLocations();
-  }, []);
-
+  // Fetch cities and get the CityId from user data
   useEffect(() => {
     const currentUser = auth.currentUser;
     if (currentUser) {
@@ -47,6 +34,20 @@ const UserDetails: React.FC = () => {
         data.role = data.role || '';
         data.phone = data.phone || '';
         setUser(data);
+        
+        // Fetch cities to match the city name and get CityId
+        if (data.city) {
+          fetch('https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getCities')
+            .then(response => response.json())
+            .then((cities: City[]) => {
+              const matchedCity = cities.find(c => c.CityName === data.city);
+              if (matchedCity) {
+                setCityId(matchedCity.CityID);
+              }
+            })
+            .catch(error => console.error('Error fetching cities:', error));
+        }
+        
         setLoading(false);
         // Redirect if Gmail sign-in and missing required fields
         const isGmail = currentUser.providerData.some((p) => p.providerId === 'google.com');
@@ -59,6 +60,30 @@ const UserDetails: React.FC = () => {
       setLoading(false);
     }
   }, [navigate]);
+
+  // Fetch location names from API based on CityId
+  useEffect(() => {
+    if (cityId !== null) {
+      const fetchLocations = async () => {
+        try {
+          const response = await fetch(`https://carwash-booking-api-ameuafauczctfndp.eastasia-01.azurewebsites.net/api/getLocations?cityId=${cityId}`);
+          if (response.ok) {
+            const locations: Location[] = await response.json();
+            const nameMap: Record<number, string> = {};
+            locations.forEach(loc => {
+              nameMap[loc.LocationID] = loc.LocationName;
+            });
+            setLocationNames(nameMap);
+          }
+        } catch (error) {
+          console.error('Error fetching locations:', error);
+        }
+      };
+      fetchLocations();
+    }
+  }, [cityId]);
+
+
 
   if (loading) {
     return (
