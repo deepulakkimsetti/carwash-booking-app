@@ -1637,9 +1637,9 @@ async function getProfessionalBookingCount(professionalId) {
     
     const result = await request.query(`
       SELECT COUNT(*) as bookingCount 
-      FROM ProfessionalAllocation 
-      WHERE professional_id = @professional_id
-        AND status IN ('assigned', 'confirmed')
+      FROM ProfessionalAllocation p INNER JOIN Bookings b ON p.booking_id = b.booking_id
+      WHERE p.professional_id = @professional_id
+        AND b.status IN ('assigned', 'confirmed')
     `);
     
     return result.recordset[0].bookingCount || 0;
